@@ -41,7 +41,7 @@ function getFragmentShader() {
     if (ix < offset || ix>= offset + duration) {
       return vec4(0.0);
     }
-    ivec2 point = ivec2(ix % 1024, ix / 1024);
+    ivec2 point = ivec2(ix % bufferWidth, ix / bufferWidth);
     vec4 result = mix(
          texelFetch(analyzeTexturesLeft,  point, 0),
          texelFetch(analyzeTexturesRight, point, 0), smoothstep(0.49,0.51,y));
@@ -68,7 +68,7 @@ function getFragmentShader() {
   }
 
   vec4 getBeatData(int ix) {
-    ivec2 point = ivec2(ix % 1024, ix / 1024);
+    ivec2 point = ivec2(ix % bufferWidth, ix / bufferWidth);
     return texelFetch(beatTexture, point, 0);
   }
 
