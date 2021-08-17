@@ -30,6 +30,7 @@ function getFragmentShader() {
   uniform int offset;
   uniform int duration;
   uniform float playPos;
+  uniform ivec2 windowSize;
 
   uniform float multiplyAvg;
 
@@ -57,14 +58,29 @@ function getFragmentShader() {
   }
 
   vec4 mixDataIX(float ix, float y) {
-    vec4 data1 = getDataIX(int(floor(ix)),y);
-    vec4 data2 = getDataIX(int(ceil(ix)),y);
-    // vec4 mixer = pow(vec4(fract(ix)), 4.0 - 3.0 * vec4(greaterThan(data1,data2)));
-    vec4 mixer = smoothstep(
-      vec4( -0.2, 0.0, 0.2, 0.4),
-      vec4(  0.6, 0.8, 1.0, 1.2),
-      vec4(fract(ix)));
-    return mix(data1,data2,mixer);
+    int startIx = int(floor(ix));
+    int stopIx = int(ceil(ix));
+    
+    float fragmentsPerPixel = float(duration) / (scale.x * float(windowSize.x));
+    if (fragmentsPerPixel < 1.0)  {
+      vec4 data1 = getDataIX(startIx,y);
+      vec4 data2 = getDataIX(stopIx,y);
+      // vec4 mixer = pow(vec4(fract(ix)), 4.0 - 3.0 * vec4(greaterThan(data1,data2)));
+      vec4 mixer = smoothstep(
+        vec4( -0.2, 0.0, 0.2, 0.4),
+        vec4(  0.6, 0.8, 1.0, 1.2),
+        vec4(fract(ix)));
+      return mix(data1,data2,mixer);
+    } else {
+      vec4 result = vec4(0.0);
+      startIx -= int(fragmentsPerPixel * 0.5);
+      stopIx += int(fragmentsPerPixel * 0.5);
+      for (int ix2 = startIx; ix2 <= stopIx; ix2++) {
+        // result = max(result, getDataIX(ix2,y));
+        result += getDataIX(ix2,y);
+      }
+      return result / float(stopIx - startIx + 1);
+    }
   }
 
   vec4 getBeatData(int ix) {
@@ -171,6 +187,7 @@ export class AudioView {
         shader.u.duration?.set(this.dataLength);
         shader.u.scale?.set(this.currentScaleX, this.currentScaleY);
         shader.u.position?.set(this.currentOffsetX, this.currentOffsetY);
+        shader.u.windowSize?.set(w,h);
 
         shader.a.vertexPosition.en();
         shader.a.vertexPosition.set(this.vertexBuffer, 2 /* elements per vertex */);
