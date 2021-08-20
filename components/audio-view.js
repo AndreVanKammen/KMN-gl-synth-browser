@@ -120,6 +120,7 @@ function getFragmentShader() {
     vec3 clr = 1.0 - dist;
     clr.r = max(clr.r - clr.b * clr.b * 0.2, 0.0);
     clr.g = max(clr.g - clr.b * clr.b * 0.15, 0.0) * 0.8;
+    beatData.rgb *= 0.0;
     if (playPos > 0.0) {
       beatData.rgb *= 0.8;
       beatData.rgb += (1.0-pow(smoothstep(-0.0,2.0,abs(playDistance)),0.15)) * 14.0;
@@ -224,6 +225,37 @@ export class AudioView {
     this.beatBuffer = beatBuffer;
   }
 
+  /**
+   * 
+   * @param {Float32Array} viewData 
+   */
+  setViewData(viewData) {
+    // throw new Error("Method not implemented.");
+    const gl = this.gl;
+    let modulus = this.webglSynth.bufferWidth * 4 * 2;
+    let enlargedViewData = new Float32Array(Math.ceil(viewData.length/modulus) * modulus);
+    let sourceLen = ~~(viewData.length/2);
+    let len = ~~(enlargedViewData.length/2);
+
+    enlargedViewData.set(viewData.subarray(0,sourceLen));
+    enlargedViewData.set(viewData.subarray(sourceLen,sourceLen*2),len);
+
+    this.viewTexture0 = gl.createOrUpdateFloat32TextureBuffer(
+                             enlargedViewData.subarray(0,len), 
+                             { bufferWidth:this.webglSynth.bufferWidth });
+                             // this.viewTexture0);
+    this.viewTexture1 = gl.createOrUpdateFloat32TextureBuffer(
+                             enlargedViewData.subarray(len,len*2.0),
+                             { bufferWidth:this.webglSynth.bufferWidth });
+                             // this.viewTexture0);
+    this.recordAnalyzeBuffer = {
+      leftTex: this.viewTexture0.texture,
+      rightTex: this.viewTexture1.texture
+    }
+    this.dataOffset = 0;
+    this.dataLength = ~~(len/4);
+  }
+
   setOffsetAndLength(recordAnalyzeBuffer, offset, length) {
     this.recordAnalyzeBuffer = recordAnalyzeBuffer;
     this.dataOffset = offset;
@@ -235,7 +267,7 @@ export class AudioView {
    */
   setSynth(webglSynth) {
     this.webglSynth = webglSynth;
-    let gl = this.gl = webglSynth.gl;
+    const gl = this.gl = webglSynth.gl;
 
     // Create two triangles to form a square that covers the whole canvas
     const basic2triangles = [
@@ -254,6 +286,9 @@ export class AudioView {
     if (!this.options.noRequestAnimationFrame) {
       window.requestAnimationFrame(this.updateCanvasBound);
     }
+
+    this.viewTexture0 = { bufferWidth:this.webglSynth.bufferWidth };
+    this.viewTexture1 = { bufferWidth:this.webglSynth.bufferWidth };
   }
 
 }
