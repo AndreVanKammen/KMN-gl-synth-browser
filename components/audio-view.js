@@ -232,28 +232,27 @@ export class AudioView {
   setViewData(viewData) {
     // throw new Error("Method not implemented.");
     const gl = this.gl;
-    let modulus = this.webglSynth.bufferWidth * 4 * 2;
-    let enlargedViewData = new Float32Array(Math.ceil(viewData.length/modulus) * modulus);
     let sourceLen = ~~(viewData.length/2);
-    let len = ~~(enlargedViewData.length/2);
+    let modulus = this.webglSynth.bufferWidth * 4;
+    // let enlargedViewData = new Float32Array(Math.ceil(viewData.length/modulus) * modulus);
+    let viewBuf0 = new Float32Array(Math.ceil(sourceLen/modulus) * modulus);
+    let viewBuf1 = new Float32Array(Math.ceil(sourceLen/modulus) * modulus);
 
-    enlargedViewData.set(viewData.subarray(0,sourceLen));
-    enlargedViewData.set(viewData.subarray(sourceLen,sourceLen*2),len);
+    viewBuf0.set(viewData.subarray(0,sourceLen));
+    viewBuf1.set(viewData.subarray(sourceLen,sourceLen*2));
 
-    this.viewTexture0 = gl.createOrUpdateFloat32TextureBuffer(
-                             enlargedViewData.subarray(0,len), 
-                             { bufferWidth:this.webglSynth.bufferWidth });
-                             // this.viewTexture0);
-    this.viewTexture1 = gl.createOrUpdateFloat32TextureBuffer(
-                             enlargedViewData.subarray(len,len*2.0),
-                             { bufferWidth:this.webglSynth.bufferWidth });
-                             // this.viewTexture0);
+    this.viewTexture0 = gl.createOrUpdateFloat32TextureBuffer(viewBuf0, 
+                             // { bufferWidth:this.webglSynth.bufferWidth });
+                             this.viewTexture0);
+    this.viewTexture1 = gl.createOrUpdateFloat32TextureBuffer(viewBuf1, 
+                             // { bufferWidth:this.webglSynth.bufferWidth });
+                             this.viewTexture0);
     this.recordAnalyzeBuffer = {
       leftTex: this.viewTexture0.texture,
       rightTex: this.viewTexture1.texture
     }
     this.dataOffset = 0;
-    this.dataLength = ~~(len/4);
+    this.dataLength = ~~(sourceLen/4);
   }
 
   setOffsetAndLength(recordAnalyzeBuffer, offset, length) {
