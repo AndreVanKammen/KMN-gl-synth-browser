@@ -48,7 +48,7 @@ function getFragmentShader() {
          texelFetch(analyzeTexturesRight, point, 0), smoothstep(0.49,0.51,y));
     // result.xz = sqrt(result.xz);
     // substract average from RMS
-    result.x -= result.x * result.x;
+    // result.xz -= result.xz * result.xz;
     // result.x = sqrt(result.x);
     // result.z = result.y;
     // result.zw = result.zw * result.zw;
@@ -65,7 +65,7 @@ function getFragmentShader() {
     if (fragmentsPerPixel < 1.0)  {
       vec4 data1 = getDataIX(startIx,y);
       vec4 data2 = getDataIX(stopIx,y);
-      // vec4 mixer = pow(vec4(fract(ix)), 4.0 - 3.0 * vec4(greaterThan(data1,data2)));
+      // Smear different values over the horizontal pixel
       vec4 mixer = smoothstep(
         vec4( -0.2, 0.0, 0.2, 0.4),
         vec4(  0.6, 0.8, 1.0, 1.2),
@@ -75,8 +75,8 @@ function getFragmentShader() {
       vec4 result = vec4(0.0);
       startIx -= int(fragmentsPerPixel * 0.5);
       stopIx += int(fragmentsPerPixel * 0.5);
+      // Sum all values for the whole period
       for (int ix2 = startIx; ix2 <= stopIx; ix2++) {
-        // result = max(result, getDataIX(ix2,y));
         result += getDataIX(ix2,y);
       }
       return result / float(stopIx - startIx + 1);
@@ -108,14 +108,15 @@ function getFragmentShader() {
     }
 
     // vec3 dist = clamp((10.0+log2(data1.wxz * vec3(1.2,1.0,0.8)))/10.0,0.0,1.0);
+    float dbRange = 100.0;
     vec3 dist = clamp(
-      // -90db range       / prevent infinity
-      (90.0 + (20.0 * log10 * log(0.000001 + data1.wxz * vec3(1.0,1.0,1.0) ) )) / 90.0,
+      (dbRange + (20.0 * log10 * log(0.000001 + data1.wxz) )) / dbRange,
        0.0, 1.0);
-    // vec3 dist = clamp(data1.wxz * vec3(1.2,2.7,2.9),0.0,1.0);
+    dist += clamp(data1.wxz * vec3(1.0),0.0,1.0);
+    dist *= 0.5;
     dist = smoothstep(
-      dist - vec3(0.1, 0.1, 0.1),
-      dist + vec3(0.03, 0.03, 0.03), 
+      dist - vec3(0.1),
+      dist + vec3(0.03), 
       abs(vec3(1.0 - 2.0 * textureCoord.y)));
     vec3 clr = 1.0 - dist;
     clr.r = max(clr.r - clr.b * clr.b * 0.2, 0.0);
@@ -193,7 +194,7 @@ export class AudioView {
         shader.a.vertexPosition.en();
         shader.a.vertexPosition.set(this.vertexBuffer, 2 /* elements per vertex */);
 
-        shader.u.playPos?.set(this.onGetPlayPos());
+        shader.u.playPos?.set(this.onGetPlayPos() * this.dataLength);
         shader.u.multiplyAvg?.set(this.multiplyAvg);
 
         gl.activeTexture(gl.TEXTURE10);
@@ -251,7 +252,7 @@ export class AudioView {
       leftTex: this.viewTexture0.texture,
       rightTex: this.viewTexture1.texture
     }
-    this.dataOffset = 0;
+    this.dataOffset = 16; // TODO: analyze starts 16 to early see analyze-loader 2 buffers extra problem
     this.dataLength = ~~(sourceLen/4);
   }
 
