@@ -1,5 +1,6 @@
 import WebGLSynth from "../../KMN-gl-synth.js/webgl-synth.js";
 import PanZoomControl from "../../KMN-utils-browser/pan-zoom-control.js";
+import { MaxRmsEng } from "../../mixer-main/audio-analysis/max-rms-eng.js";
 
 function getVertexShader() {
   return `
@@ -28,68 +29,74 @@ function getFragmentShader() {
 
   uniform vec2 scale;
   uniform int offset;
+
   uniform int duration;
   uniform float playPos;
+
   uniform ivec2 windowSize;
 
-  uniform float multiplyAvg;
+  uniform bool removeAvgFromRMS;
+  uniform vec3 preScale;
+  uniform vec3 quadraticCurve;
+  uniform vec3 linearDbMix;
+  uniform vec3 dBRange;
 
   uniform sampler2D analyzeTexturesLeft;
   uniform sampler2D analyzeTexturesRight;
   uniform sampler2D beatTexture;
 
-  vec4 getDataIX(int ix, float y) {
+  const float log10 = 1.0 / log(10.0);
+
+  vec3 getDataIX(int ix, float y) {
     if (ix < offset || ix>= offset + duration) {
-      return vec4(0.0);
+      return vec3(0.0);
     }
     ivec2 point = ivec2(ix % bufferWidth, ix / bufferWidth);
-    vec4 result = mix(
-         texelFetch(analyzeTexturesLeft,  point, 0),
-         texelFetch(analyzeTexturesRight, point, 0), smoothstep(0.49,0.51,y));
-    // result.xz = sqrt(result.xz);
-    // substract average from RMS
-    // result.xz -= result.xz * result.xz;
-    // result.x = sqrt(result.x);
-    // result.z = result.y;
-    // result.zw = result.zw * result.zw;
-    // Make RMS and energy cubic or it will be to much in the view
-    result.xzw = pow(result.xzw,vec3(1.5,3.0,10.0));
-    return result;
+    vec4 left = texelFetch(analyzeTexturesLeft,  point, 0).yxzw;
+    vec4 right = texelFetch(analyzeTexturesRight,  point, 0);
+    // Use average from left instead of RMS as it shows low base better
+    left = vec4(abs(left.y),0.0,left.zw);
+    vec4 result = mix(left, right, smoothstep(0.49,0.51,y));
+
+    result.xz = sqrt(result.xz);
+    // Substract average from RMS?
+    if (removeAvgFromRMS) {
+      result.x -= result.y * result.y;
+    }
+    return result.wxz;
   }
 
-  vec4 mixDataIX(float ix, float y) {
+  vec3 mixDataIX(float ix, float y) {
     int startIx = int(floor(ix));
     int stopIx = int(ceil(ix));
     
+    vec3 result = vec3(0.0);
     float fragmentsPerPixel = float(duration) / (scale.x * float(windowSize.x));
     if (fragmentsPerPixel < 1.0)  {
-      vec4 data1 = getDataIX(startIx,y);
-      vec4 data2 = getDataIX(stopIx,y);
-      // Smear different values over the horizontal pixel
-      vec4 mixer = smoothstep(
-        vec4( -0.2, 0.0, 0.2, 0.4),
-        vec4(  0.6, 0.8, 1.0, 1.2),
-        vec4(fract(ix)));
-      return mix(data1,data2,mixer);
+      vec3 data1 = getDataIX(startIx,y);
+      vec3 data2 = getDataIX(stopIx,y);
+      result = mix(data1,data2,fract(ix));
     } else {
-      vec4 result = vec4(0.0);
       startIx -= int(fragmentsPerPixel * 0.5);
       stopIx += int(fragmentsPerPixel * 0.5);
       // Sum all values for the whole period
       for (int ix2 = startIx; ix2 <= stopIx; ix2++) {
         result += getDataIX(ix2,y);
       }
-      return result / float(stopIx - startIx + 1);
+      result = result / float(stopIx - startIx + 1);
     }
+    result = result / preScale;
+    result = pow(result,quadraticCurve);
+    vec3 resultDB = clamp(
+      (dBRange + (20.0 * log10 * log(0.000001 + result) )) / dBRange,
+       0.0, 1.0);
+    return mix(result, resultDB, linearDbMix);
   }
 
   vec4 getBeatData(int ix) {
     ivec2 point = ivec2(ix % bufferWidth, ix / bufferWidth);
     return texelFetch(beatTexture, point, 0);
   }
-
-  const int sampleTests = 2;
-  const float log10 = 1.0 / log(10.0);
 
   void main(void) {
     float delta = (textureCoord.x * float(duration));
@@ -100,20 +107,14 @@ function getFragmentShader() {
     //   readOffset += -sin(playDistance*0.25) * 14.0;
     // }
     
-    vec4 data1 = mixDataIX(readOffset,textureCoord.y);
+    vec3 data1 = mixDataIX(readOffset,textureCoord.y);
     vec4 beatData = getBeatData(int(round(readOffset)));
 
     if (abs(playDistance) <= pi * 0.5) {
       data1 *= 1.0 + 0.5 * cos(playDistance);
     }
 
-    // vec3 dist = clamp((10.0+log2(data1.wxz * vec3(1.2,1.0,0.8)))/10.0,0.0,1.0);
-    float dbRange = 100.0;
-    vec3 dist = clamp(
-      (dbRange + (20.0 * log10 * log(0.000001 + data1.wxz) )) / dbRange,
-       0.0, 1.0);
-    dist += clamp(data1.wxz * vec3(1.0),0.0,1.0);
-    dist *= 0.5;
+    vec3 dist = clamp(data1,0.0,1.0);
     dist = smoothstep(
       dist - vec3(0.1),
       dist + vec3(0.03), 
@@ -142,7 +143,19 @@ export class AudioView {
     this.dataLength = 1000;
     this.onClick = (x, y) => {};
     this.onGetPlayPos = () => -1;
-    this.multiplyAvg = 256;
+
+    this.preScaleMax = 1.0;
+    this.preScaleRMS = 1.0;
+    this.preScaleEng = 1.0;
+    this.quadraticCurveMax = 1.0;
+    this.quadraticCurveRMS = 1.0;
+    this.quadraticCurveEng = 1.0;
+    this.linearDbMixMax = 1.0;
+    this.linearDbMixRMS = 1.0;
+    this.linearDbMixEng = 1.0;
+    this.dBRangeMax = 90.0;
+    this.dBRangeRMS = 90.0;
+    this.dBRangeEng = 90.0;
   }
 
   /**
@@ -189,13 +202,18 @@ export class AudioView {
         shader.u.duration?.set(this.dataLength);
         shader.u.scale?.set(this.currentScaleX, this.currentScaleY);
         shader.u.position?.set(this.currentOffsetX, this.currentOffsetY);
-        shader.u.windowSize?.set(w,h);
+        shader.u.windowSize?.set(w, h);
 
+        shader.u.removeAvgFromRMS.set(true);
+        shader.u.preScale?.set(this.preScaleMax, this.preScaleRMS ,this.preScaleEng);
+        shader.u.quadraticCurve?.set(this.quadraticCurveMax, this.quadraticCurveRMS ,this.quadraticCurveEng);
+        shader.u.linearDbMix?.set(this.linearDbMixMax, this.linearDbMixRMS ,this.linearDbMixEng);
+        shader.u.dBRange?.set(this.dBRangeMax, this.dBRangeRMS ,this.dBRangeEng);
+      
         shader.a.vertexPosition.en();
         shader.a.vertexPosition.set(this.vertexBuffer, 2 /* elements per vertex */);
 
         shader.u.playPos?.set(this.onGetPlayPos() * this.dataLength);
-        shader.u.multiplyAvg?.set(this.multiplyAvg);
 
         gl.activeTexture(gl.TEXTURE10);
         gl.bindTexture(gl.TEXTURE_2D, this.recordAnalyzeBuffer.leftTex);
