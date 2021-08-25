@@ -36,6 +36,8 @@ function getFragmentShader() {
   uniform ivec2 windowSize;
 
   uniform bool removeAvgFromRMS;
+  uniform bool showBeats;
+
   uniform vec3 preScale;
   uniform vec3 quadraticCurve;
   uniform vec3 linearDbMix;
@@ -58,11 +60,12 @@ function getFragmentShader() {
     left = vec4(abs(left.y),0.0,left.zw);
     vec4 result = mix(left, right, smoothstep(0.49,0.51,y));
 
-    result.xz = sqrt(result.xz);
     // Substract average from RMS?
     if (removeAvgFromRMS) {
       result.x -= result.y * result.y;
     }
+    result.xz = sqrt(result.xz);
+    
     return result.wxz;
   }
 
@@ -122,12 +125,16 @@ function getFragmentShader() {
     vec3 clr = 1.0 - dist;
     clr.r = max(clr.r - clr.b * clr.b * 0.2, 0.0);
     clr.g = max(clr.g - clr.b * clr.b * 0.15, 0.0) * 0.8;
-    beatData.rgb *= 0.0;
+    // beatData.rgb *= 0.0;
+    if (!showBeats) {
+      beatData.rgb *= 0.0;
+    }
     if (playPos > 0.0) {
       beatData.rgb *= 0.8;
       beatData.rgb += (1.0-pow(smoothstep(-0.0,2.0,abs(playDistance)),0.15)) * 14.0;
     }
-    beatData.rgb *= 1.0-0.5 * smoothstep(0.0,0.3,clr);
+    beatData.rgb *= pow(clamp(beatData.rgb,0.0,1.0),vec3(0.7))*0.7;
+    beatData.rgb *= 1.0-0.8 * smoothstep(0.0,0.2,clr);
 
     fragColor = vec4(clamp(pow(beatData.rgb / 12.0,vec3(2.0)) + clr.rgb * 0.9, 0.0,1.0) ,1.0);
   }
@@ -150,12 +157,14 @@ export class AudioView {
     this.quadraticCurveMax = 1.0;
     this.quadraticCurveRMS = 1.0;
     this.quadraticCurveEng = 1.0;
-    this.linearDbMixMax = 1.0;
-    this.linearDbMixRMS = 1.0;
-    this.linearDbMixEng = 1.0;
+    this.linearDbMixMax = 0.0;
+    this.linearDbMixRMS = 0.0;
+    this.linearDbMixEng = 0.0;
     this.dBRangeMax = 90.0;
     this.dBRangeRMS = 90.0;
     this.dBRangeEng = 90.0;
+
+    this.showBeats = true;
   }
 
   /**
@@ -173,6 +182,36 @@ export class AudioView {
       maxXScale: 1000.0
     });
     this.control.onClick = (x,y) => this.onClick(x,y);
+  }
+
+  /**
+   * @param {WebGLSynth} webglSynth 
+   */
+   setSynth(webglSynth) {
+    this.webglSynth = webglSynth;
+    const gl = this.gl = webglSynth.gl;
+
+    // Create two triangles to form a square that covers the whole canvas
+    const basic2triangles = [
+      -1, -1,
+       1, -1,
+      -1,  1,
+       1,  1,
+       1, -1 ];
+    this.vertexBuffer = gl.updateOrCreateFloatArray(0, basic2triangles);
+    this.shader = gl.getShaderProgram(
+      getVertexShader(), 
+      this.webglSynth.getDefaultDefines()+
+      getFragmentShader(),
+      2);
+
+    if (!this.options.noRequestAnimationFrame) {
+      window.requestAnimationFrame(this.updateCanvasBound);
+    }
+
+    this.viewTexture0 = { bufferWidth:this.webglSynth.bufferWidth };
+    this.viewTexture1 = { bufferWidth: this.webglSynth.bufferWidth };
+    this.beatBuffer = { bufferWidth: this.webglSynth.bufferWidth };
   }
 
   updateCanvas() {
@@ -205,10 +244,11 @@ export class AudioView {
         shader.u.windowSize?.set(w, h);
 
         shader.u.removeAvgFromRMS.set(true);
-        shader.u.preScale?.set(this.preScaleMax, this.preScaleRMS ,this.preScaleEng);
-        shader.u.quadraticCurve?.set(this.quadraticCurveMax, this.quadraticCurveRMS ,this.quadraticCurveEng);
-        shader.u.linearDbMix?.set(this.linearDbMixMax, this.linearDbMixRMS ,this.linearDbMixEng);
-        shader.u.dBRange?.set(this.dBRangeMax, this.dBRangeRMS ,this.dBRangeEng);
+        shader.u.preScale?.set(      this.preScaleMax,       this.preScaleRMS ,       this.preScaleEng);
+        shader.u.quadraticCurve?.set(this.quadraticCurveMax, this.quadraticCurveRMS , this.quadraticCurveEng);
+        shader.u.linearDbMix?.set(   this.linearDbMixMax,    this.linearDbMixRMS ,    this.linearDbMixEng);
+        shader.u.dBRange?.set(       this.dBRangeMax,        this.dBRangeRMS,         this.dBRangeEng);
+        shader.u.showBeats?.set(this.showBeats);
       
         shader.a.vertexPosition.en();
         shader.a.vertexPosition.set(this.vertexBuffer, 2 /* elements per vertex */);
@@ -240,10 +280,6 @@ export class AudioView {
     }
   }
 
-  setBeatData(beatBuffer) {
-    this.beatBuffer = beatBuffer;
-  }
-
   /**
    * 
    * @param {Float32Array} viewData 
@@ -258,14 +294,14 @@ export class AudioView {
     let viewBuf1 = new Float32Array(Math.ceil(sourceLen/modulus) * modulus);
 
     viewBuf0.set(viewData.subarray(0,sourceLen));
-    viewBuf1.set(viewData.subarray(sourceLen,sourceLen*2));
+    viewBuf1.set(viewData.subarray(sourceLen, sourceLen * 2));
 
     this.viewTexture0 = gl.createOrUpdateFloat32TextureBuffer(viewBuf0, 
                              // { bufferWidth:this.webglSynth.bufferWidth });
                              this.viewTexture0);
     this.viewTexture1 = gl.createOrUpdateFloat32TextureBuffer(viewBuf1, 
                              // { bufferWidth:this.webglSynth.bufferWidth });
-                             this.viewTexture0);
+                             this.viewTexture1);
     this.recordAnalyzeBuffer = {
       leftTex: this.viewTexture0.texture,
       rightTex: this.viewTexture1.texture
@@ -274,39 +310,17 @@ export class AudioView {
     this.dataLength = ~~(sourceLen/4);
   }
 
+  setBeatData(beatBufferData) {
+    let sourceLen = beatBufferData.length;
+    let modulus = this.webglSynth.bufferWidth * 4;
+    let viewBuf0 = new Float32Array(Math.ceil(sourceLen/modulus) * modulus);
+    viewBuf0.set(beatBufferData);
+    this.beatBuffer = this.gl.createOrUpdateFloat32TextureBuffer(viewBuf0, this.beatBuffer);
+  }
+
   setOffsetAndLength(recordAnalyzeBuffer, offset, length) {
     this.recordAnalyzeBuffer = recordAnalyzeBuffer;
     this.dataOffset = offset;
     this.dataLength = length;
   }
-
-  /**
-   * @param {WebGLSynth} webglSynth 
-   */
-  setSynth(webglSynth) {
-    this.webglSynth = webglSynth;
-    const gl = this.gl = webglSynth.gl;
-
-    // Create two triangles to form a square that covers the whole canvas
-    const basic2triangles = [
-      -1, -1,
-       1, -1,
-      -1,  1,
-       1,  1,
-       1, -1 ];
-    this.vertexBuffer = gl.updateOrCreateFloatArray(0, basic2triangles);
-    this.shader = gl.getShaderProgram(
-      getVertexShader(), 
-      this.webglSynth.getDefaultDefines()+
-      getFragmentShader(),
-      2);
-
-    if (!this.options.noRequestAnimationFrame) {
-      window.requestAnimationFrame(this.updateCanvasBound);
-    }
-
-    this.viewTexture0 = { bufferWidth:this.webglSynth.bufferWidth };
-    this.viewTexture1 = { bufferWidth:this.webglSynth.bufferWidth };
-  }
-
 }
