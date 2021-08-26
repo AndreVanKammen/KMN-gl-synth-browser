@@ -54,10 +54,10 @@ function getFragmentShader() {
       return vec3(0.0);
     }
     ivec2 point = ivec2(ix % bufferWidth, ix / bufferWidth);
-    vec4 left = texelFetch(analyzeTexturesLeft,  point, 0).yxzw;
+    vec4 left = texelFetch(analyzeTexturesLeft,  point, 0);
     vec4 right = texelFetch(analyzeTexturesRight,  point, 0);
     // Use average from left instead of RMS as it shows low base better
-    left = vec4(abs(left.y),0.0,left.zw);
+    // left = vec4(abs(left.y),0.0,left.zw);
     vec4 result = mix(left, right, smoothstep(0.49,0.51,y));
 
     // Substract average from RMS?
@@ -113,9 +113,9 @@ function getFragmentShader() {
     vec3 data1 = mixDataIX(readOffset,textureCoord.y);
     vec4 beatData = getBeatData(int(round(readOffset)));
 
-    if (abs(playDistance) <= pi * 0.5) {
-      data1 *= 1.0 + 0.5 * cos(playDistance);
-    }
+    // if (abs(playDistance) <= pi * 0.5) {
+    //   data1 *= 1.0 + 0.5 * cos(playDistance);
+    // }
 
     vec3 dist = clamp(data1,0.0,1.0);
     dist = smoothstep(
@@ -129,11 +129,11 @@ function getFragmentShader() {
     if (!showBeats) {
       beatData.rgb *= 0.0;
     }
+    beatData.rgb *= pow(clamp(beatData.rgb,0.0,1.0),vec3(0.7))*0.7;
     if (playPos > 0.0) {
       beatData.rgb *= 0.8;
       beatData.rgb += (1.0-pow(smoothstep(-0.0,2.0,abs(playDistance)),0.15)) * 14.0;
     }
-    beatData.rgb *= pow(clamp(beatData.rgb,0.0,1.0),vec3(0.7))*0.7;
     beatData.rgb *= 1.0-0.8 * smoothstep(0.0,0.2,clr);
 
     fragColor = vec4(clamp(pow(beatData.rgb / 12.0,vec3(2.0)) + clr.rgb * 0.9, 0.0,1.0) ,1.0);
@@ -243,7 +243,7 @@ export class AudioView {
         shader.u.position?.set(this.currentOffsetX, this.currentOffsetY);
         shader.u.windowSize?.set(w, h);
 
-        shader.u.removeAvgFromRMS.set(true);
+        shader.u.removeAvgFromRMS.set(false);
         shader.u.preScale?.set(      this.preScaleMax,       this.preScaleRMS ,       this.preScaleEng);
         shader.u.quadraticCurve?.set(this.quadraticCurveMax, this.quadraticCurveRMS , this.quadraticCurveEng);
         shader.u.linearDbMix?.set(   this.linearDbMixMax,    this.linearDbMixRMS ,    this.linearDbMixEng);
