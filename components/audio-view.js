@@ -89,11 +89,12 @@ function getFragmentShader() {
       result = result / float(stopIx - startIx + 1);
     }
     result = result / preScale;
-    result = pow(result,quadraticCurve);
     vec3 resultDB = clamp(
       (dBRange + (20.0 * log10 * log(0.000001 + result) )) / dBRange,
        0.0, 1.0);
-    return mix(result, resultDB, linearDbMix);
+    result = mix(result, resultDB, linearDbMix);
+    result = pow(result,quadraticCurve);
+    return result;
   }
 
   vec4 getBeatData(int ix) {
@@ -126,8 +127,13 @@ function getFragmentShader() {
     clr.r = max(clr.r - clr.b * clr.b * 0.2, 0.0);
     clr.g = max(clr.g - clr.b * clr.b * 0.15, 0.0) * 0.8;
     // beatData.rgb *= 0.0;
-    if (!showBeats) {
+    if (!showBeats || textureCoord.y>0.1) {
       beatData.rgb *= 0.0;
+    }
+    if (beatData.a>100.0) {
+      if (textureCoord.y>0.9) {
+        beatData.rgb = vec3(beatData.a / 1000.0);
+      }
     }
     beatData.rgb *= pow(clamp(beatData.rgb,0.0,1.0),vec3(0.7))*0.7;
     if (playPos > 0.0) {
