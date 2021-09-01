@@ -56,19 +56,37 @@ function getFragmentShader() {
     ivec2 point = ivec2(ix % bufferWidth, ix / bufferWidth);
     vec4 left = texelFetch(analyzeTexturesLeft,  point, 0);
     vec4 right = texelFetch(analyzeTexturesRight,  point, 0);
-    // Use average from left instead of RMS as it shows low base better
-    // left = vec4(abs(left.y),0.0,left.zw);
     vec4 result = mix(left, right, smoothstep(0.49,0.51,y));
 
     // Substract average from RMS?
-    if (removeAvgFromRMS) {
-      result.x -= result.y * result.y;
-    }
+    // if (removeAvgFromRMS) {
+    //   result.x -= result.y * result.y;
+    // }
     result.xz = sqrt(result.xz);
     
     return result.wxz;
   }
+/*
+  vec3 getDataIX2(int ix, float y) {
+    vec3 a = getDataIX1(ix - 1, y);
+    vec3 b = getDataIX1(ix, y);
+    vec3 c = getDataIX1(ix + 1, y);
 
+    return vec3(((a.x > b.x) == (c.x > b.x)) ? (a.x + c.x) * 0.5 : (a.x + b.x + c.x ) / 3.0,
+                ((a.y > b.y) == (c.y > b.y)) ? (a.y + c.y) * 0.5 : (a.y + b.y + c.y ) / 3.0,
+                ((a.z > b.z) == (c.z > b.z)) ? (a.z + c.z) * 0.5 : (a.z + b.z + c.z ) / 3.0);
+  }
+
+  vec3 getDataIX(int ix, float y) {
+    vec3 a = getDataIX2(ix - 1, y);
+    vec3 b = getDataIX2(ix, y);
+    vec3 c = getDataIX2(ix + 1, y);
+
+    return vec3(((a.x > b.x) == (c.x > b.x)) ? (a.x + c.x) * 0.5 : b.x,
+                ((a.y > b.y) == (c.y > b.y)) ? (a.y + c.y) * 0.5 : b.y,
+                ((a.z > b.z) == (c.z > b.z)) ? (a.z + c.z) * 0.5 : b.z);
+  }
+*/
   vec3 mixDataIX(float ix, float y) {
     int startIx = int(floor(ix));
     int stopIx = int(ceil(ix));
@@ -78,15 +96,20 @@ function getFragmentShader() {
     if (fragmentsPerPixel < 1.0)  {
       vec3 data1 = getDataIX(startIx,y);
       vec3 data2 = getDataIX(stopIx,y);
-      result = mix(data1,data2,fract(ix));
+      result = mix(data1,data2,(1.0+sin((fract(ix) * 2.0 - 1.0) * pi * 0.5))*0.5);
     } else {
-      startIx -= int(fragmentsPerPixel * 0.5);
-      stopIx += int(fragmentsPerPixel * 0.5);
+      startIx -= int(fragmentsPerPixel * 0.55);
+      stopIx += int(fragmentsPerPixel * 0.55);
       // Sum all values for the whole period
+      float weight = 0.0;
+      float length = float(stopIx - startIx + 1);
       for (int ix2 = startIx; ix2 <= stopIx; ix2++) {
-        result += getDataIX(ix2,y);
+        // result = max(result,getDataIX(ix2,y));
+        float w = 1.0;// - cos((float(ix2) + fract(ix)) / length * pi * 2.0);
+        weight += w;
+        result += getDataIX(ix2,y) * w;
       }
-      result = result / float(stopIx - startIx + 1);
+      result = result / weight; // float(stopIx - startIx + 1);
     }
     result = result / preScale;
     vec3 resultDB = clamp(
@@ -130,7 +153,7 @@ function getFragmentShader() {
     if (!showBeats || textureCoord.y>0.1) {
       beatData.rgb *= 0.0;
     }
-    if (beatData.a>100.0) {
+    if (showBeats && beatData.a>100.0) {
       if (textureCoord.y>0.9) {
         beatData.rgb = vec3(beatData.a / 1000.0);
       }
@@ -249,7 +272,7 @@ export class AudioView {
         shader.u.position?.set(this.currentOffsetX, this.currentOffsetY);
         shader.u.windowSize?.set(w, h);
 
-        shader.u.removeAvgFromRMS.set(false);
+        // shader.u.removeAvgFromRMS.set(false);
         shader.u.preScale?.set(      this.preScaleMax,       this.preScaleRMS ,       this.preScaleEng);
         shader.u.quadraticCurve?.set(this.quadraticCurveMax, this.quadraticCurveRMS , this.quadraticCurveEng);
         shader.u.linearDbMix?.set(   this.linearDbMixMax,    this.linearDbMixRMS ,    this.linearDbMixEng);
