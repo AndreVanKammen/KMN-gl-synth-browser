@@ -1,6 +1,7 @@
 import WebGLSynth from "../../KMN-gl-synth.js/webgl-synth.js";
 import PanZoomControl from "../../KMN-utils-browser/pan-zoom-control.js";
-import { MaxRmsEng } from "../../mixer-main/audio-analysis/max-rms-eng.js";
+
+const levelsOfDetail = 32;
 
 function getVertexShader() {
   return /*glsl*/`
@@ -35,8 +36,8 @@ function getFragmentShader() {
 
   uniform ivec2 windowSize;
 
-  uniform int[16] LODOffsets;
-  uniform int LODLevel;
+  uniform int[${levelsOfDetail}] LODOffsets;
+  uniform float LODLevel;
 
   uniform bool removeAvgFromRMS;
   uniform bool showBeats;
@@ -52,15 +53,7 @@ function getFragmentShader() {
 
   const float log10 = 1.0 / log(10.0);
 
-  vec3 getDataIX(int ix_in, float y) {
-    int len = int(ceil(pow(0.5,float(LODLevel)) * float(duration)));
-    int divider = int(pow(2.0, float(LODLevel)));
-    int ofs = LODOffsets[LODLevel] + offset / divider;
-    int ix = LODOffsets[LODLevel] + ix_in / divider;
-
-    // if (ix < ofs || ix>= ofs + len) {
-    //   return vec3(0.0);
-    // }
+  vec3 getDataIX0(int ix, float y, int LODLevel) {
     ivec2 point = ivec2(ix % bufferWidth, ix / bufferWidth);
 
     vec4 left = texelFetch(analyzeTexturesLeft,  point, 0);
@@ -73,7 +66,40 @@ function getFragmentShader() {
     // }
     result.xz = sqrt(result.xz);
     
-    return result.wxz;
+    return clamp(result.wxz,0.0,100.0);
+  }
+
+  vec3 getDataIX1(float ix_in, float y, int LODLevel) {
+
+    int len = int(ceil(pow(0.5,float(LODLevel)) * float(duration)));
+    int divider = int(pow(2.0, float(LODLevel)));
+    int LODOffset = LODOffsets[LODLevel];
+    int ofs = LODOffset + offset / divider;
+    float ix = float(LODOffset) + ix_in / float(divider);
+
+    if (ix < float(ofs) || ix>= float(ofs + len)) {
+      return vec3(0.0);
+    }
+
+    vec3 low = getDataIX0(int(floor(ix)),y,LODLevel);
+    vec3 high = getDataIX0(int(ceil(ix)),y,LODLevel);
+
+    return mix(low,high,(1.0+sin((fract(ix) * 2.0 - 1.0) * pi * 0.5))*0.5);//fract(ix));
+  }
+
+  vec3 getDataIX(float ix_in, float y,float LODLevel) {
+    // vec3 result = vec3(0.0);
+    // float weight = 0.0;
+    // for (int ix = 0; ix <= ceil(LODLevel); ix++) {
+    //   // float w = 1.0 / pow(2.0,float(ix));
+    //   float w = pow(1.5,float(ix));
+    //   weight += w;
+    //   result += getDataIX1(ix_in, y, ix) * w;
+    // }
+    // return result / weight;
+    vec3 low = getDataIX1(ix_in, y, int(floor(LODLevel)));
+    vec3 high = getDataIX1(ix_in, y, int(ceil(LODLevel)));
+    return mix(low,high,fract(LODLevel)); // (1.0+sin((fract(LODLevel) * 2.0 - 1.0) * pi * 0.5))*0.5);
   }
 /*
   vec3 getDataIX2(int ix, float y) {
@@ -100,26 +126,26 @@ function getFragmentShader() {
     int startIx = int(floor(ix));
     int stopIx = int(ceil(ix));
     
-    vec3 result = vec3(0.0);
     float fragmentsPerPixel = float(duration) / (scale.x * float(windowSize.x));
-    if (fragmentsPerPixel < 1.0)  {
-      vec3 data1 = getDataIX(startIx,y);
-      vec3 data2 = getDataIX(stopIx,y);
-      result = mix(data1,data2,(1.0+sin((fract(ix) * 2.0 - 1.0) * pi * 0.5))*0.5);
-    } else {
-      startIx -= int(fragmentsPerPixel * 0.55);
-      stopIx += int(fragmentsPerPixel * 0.55);
-      // Sum all values for the whole period
-      float weight = 0.0;
-      float length = float(stopIx - startIx + 1);
-      for (int ix2 = startIx; ix2 <= stopIx; ix2++) {
-        // result = max(result,getDataIX(ix2,y));
-        float w = 1.0;// - cos((float(ix2) + fract(ix)) / length * pi * 2.0);
-        weight += w;
-        result += getDataIX(ix2,y) * w;
-      }
-      result = result / weight; // float(stopIx - startIx + 1);
-    }
+    vec3 result = getDataIX(ix,y, clamp(log2(0.5+fragmentsPerPixel*(1.0+LODLevel)),0.01,float(${levelsOfDetail})));
+    // if (fragmentsPerPixel < 1.0)  {
+      // vec3 data1 = getDataIX(startIx,y);
+      // vec3 data2 = getDataIX(stopIx,y);
+    // result = mix(data1,data2,(1.0+sin((fract(ix) * 2.0 - 1.0) * pi * 0.5))*0.5);
+    // } else {
+    //   startIx -= int(fragmentsPerPixel * 0.55);
+    //   stopIx += int(fragmentsPerPixel * 0.55);
+    //   // Sum all values for the whole period
+    //   float weight = 0.0;
+    //   float length = float(stopIx - startIx + 1);
+    //   for (int ix2 = startIx; ix2 <= stopIx; ix2++) {
+    //     // result = max(result,getDataIX(ix2,y));
+    //     float w = 1.0;// - cos((float(ix2) + fract(ix)) / length * pi * 2.0);
+    //     weight += w;
+    //     result += getDataIX(ix2,y) * w;
+    //   }
+    //   result = result / weight; // float(stopIx - startIx + 1);
+    // }
     result = result / preScale;
     vec3 resultDB = clamp(
       (dBRange + (20.0 * log10 * log(0.000001 + result) )) / dBRange,
@@ -293,7 +319,7 @@ export class AudioView {
         if (shader.u["LODOffsets[0]"]) {
           gl.uniform1iv(shader.u["LODOffsets[0]"], this.LODOffsets);
         }
-        shader.u.LODLevel?.set(Math.round(this.levelOfDetail));
+        shader.u.LODLevel?.set((this.levelOfDetail));
       
         shader.a.vertexPosition.en();
         shader.a.vertexPosition.set(this.vertexBuffer, 2 /* elements per vertex */);
@@ -325,6 +351,33 @@ export class AudioView {
     }
   }
 
+  _addLODData(target, len) {
+    this.LODOffsets = [0];
+    len /= 4;
+    for (let lod = 0; lod < levelsOfDetail; lod++) {
+      let ofs_in = ~~(this.LODOffsets[lod] * 4);
+      let ofs_out = ofs_in + len * 4;
+      console.log(ofs_in, len);
+      this.LODOffsets.push(ofs_out / 4);
+      // count to len div2 rounded up
+      for (let ix = 0; ix < len + 1; ix += 2) {
+        for (let jx = 0; jx < 4; jx++) {
+          // TODO: This wraps arround to the 1st value of the average buf but to minor to see
+          //       and i don't want to break the loop here maybe fix afterwards
+          target[ofs_out++] = (target[ofs_in] + target[ofs_in + 4]) * 0.5;
+          if (target[ofs_out - 1] < 0.0) {
+            if (jx !== 1) {
+              // debugger;
+            }
+          }
+          ofs_in += 1;
+        }
+        ofs_in += 4;
+      }
+      len = ~~Math.ceil(len / 2);
+    }
+  }
+
   /**
    * 
    * @param {Float32Array} viewData 
@@ -335,31 +388,14 @@ export class AudioView {
     let sourceLen = ~~(viewData.length/2);
     let modulus = this.webglSynth.bufferWidth * 4;
     // let enlargedViewData = new Float32Array(Math.ceil(viewData.length/modulus) * modulus);
-    let viewBuf0 = new Float32Array(Math.ceil(sourceLen/modulus) * modulus * 2);
-    let viewBuf1 = new Float32Array(Math.ceil(sourceLen/modulus) * modulus * 2);
+    let viewBuf0 = new Float32Array(Math.ceil(sourceLen/modulus) * modulus * 4);
+    let viewBuf1 = new Float32Array(Math.ceil(sourceLen/modulus) * modulus * 4);
 
     viewBuf0.set(viewData.subarray(0,sourceLen));
     viewBuf1.set(viewData.subarray(sourceLen, sourceLen * 2));
 
-    this.LODOffsets = [0];
-    let target = viewBuf1;
-    let len = ~~sourceLen;
-    for (let lod = 0; lod < 8; lod++) {
-      let ofs_in = this.LODOffsets[lod] * 4.0;
-      let ofs_out = ofs_in + len;
-      this.LODOffsets.push(ofs_out / 4);
-      // count to len div2 rounded up
-      for (let ix = 0; ix < len + 1; ix += 2) {
-        for (let jx = 0; jx < 4; jx++) {
-          // TODO: This wraps arround to the 1st value of the average buf but to minor to see
-          //       and i don't want to break the loop here maybe fix afterwards
-          target[ofs_out++] = (target[ofs_in] + target[ofs_in + 4]) * 0.5;
-          ofs_in += 1;
-        }
-        ofs_in += 4;
-      }
-      len = ~~Math.ceil(len / 2);
-    }
+    this._addLODData(viewBuf0, ~~sourceLen)
+    this._addLODData(viewBuf1, ~~sourceLen)
 /*
   We should pass the offsets as they are hard to calculate
   len = 13 Math.ceil(Math.pow(0.5,LOD) * 13)
