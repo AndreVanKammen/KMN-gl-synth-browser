@@ -7,7 +7,7 @@ import getWebGLContext from "../../KMN-utils.js/webglutils.js";
 //   3   5
 
 function getVertexShader() {
-  return `
+  return /*glsl*/`
     in vec2 vertexPosition;
 
     uniform sampler2D pointDataTexture;
@@ -64,7 +64,7 @@ function getVertexShader() {
 
   // The shader that calculates the pixel values for the filled triangles
 function getFragmentShader() {
-  return `precision highp float;
+  return /*glsl*/`precision highp float;
   precision highp float;
   precision highp int;
   precision highp sampler2DArray;
@@ -72,6 +72,7 @@ function getFragmentShader() {
   const float pi = 3.141592653589793;
 
   uniform vec2 windowSize;
+  uniform float dpr;
 
   flat in vec4 lineStart;
   flat in vec4 lineEnd;
@@ -102,11 +103,11 @@ function getFragmentShader() {
                 distance(textureCoordScreen.xy, lineStartScreen.xy);
 
     vec3 pointColor = vec3(0.19,0.19,0.9);
-    float pointBorderWidth = 0.25;
-    float lineWidth = 0.5;
-    float pointWidth = 6.0;
+    float pointBorderWidth = 0.25 * dpr;
+    float lineWidth = 0.5 * dpr;
+    float pointWidth = 6.0 * dpr;
     if (lineStart.z > 0.0) {
-      pointWidth = 14.0;
+      pointWidth = 10.0 * dpr;
     }
 
     float hasPointBorder = 1.0 - smoothstep(pointBorderWidth, pointBorderWidth + 1.25, abs(pointDist - pointWidth));
@@ -167,6 +168,7 @@ export class ControlLineEditor {
     this.canvas = this.options.canvas || this.parentElement.$el({tag:'canvas', cls:'analyzerCanvas'});
     const gl = this.gl = getWebGLContext(this.canvas);
 
+    /** @type {PanZoomControl} */
     this.control = this.options.control || new PanZoomControl(this.parentElement, {
       minYScale: 1.0,
       maxYScale: 1.0,
@@ -266,6 +268,7 @@ export class ControlLineEditor {
       this.lastClickTime = undefined;
     }
   }
+  
   handleDown(x,y) {
     this.updateSelect(x,y);
     if (this.selectedLineIx !== -1 && this.control.event.ctrlKey) {
@@ -420,7 +423,7 @@ export class ControlLineEditor {
     let gl = this.gl;
     let shader = this.shader;
 
-    if (gl && shader && this.parentElement) {
+    if (gl && shader && this.parentElement && this.points?.length > 0) {
 
       let {w, h, dpr} = gl.updateCanvasSize(this.canvas);
 
@@ -440,7 +443,6 @@ export class ControlLineEditor {
         this.currentOffsetX = (this.currentOffsetX || 0.0) * 0.9 + 0.1 * this.control.xOffset;
         this.currentOffsetY = (this.currentOffsetY || 0.0) * 0.9 + 0.1 * this.control.yOffset;
 
-        shader.u.windowSize?.set(w,h);
         if (shader.u.pointDataTexture) {
           gl.activeTexture(gl.TEXTURE2);
           gl.bindTexture(gl.TEXTURE_2D, this.pointInfo.texture);
@@ -448,8 +450,10 @@ export class ControlLineEditor {
           gl.activeTexture(gl.TEXTURE0);
         }
   
+        shader.u.windowSize?.set(w,h);
         shader.u.scale?.set(this.currentScaleX, this.currentScaleY);
         shader.u.position?.set(this.currentOffsetX, this.currentOffsetY);
+        shader.u.dpr?.set(dpr);
 
         gl.drawArrays(gl.TRIANGLES, 0, (this.points.length-1) * 6.0 );
       }

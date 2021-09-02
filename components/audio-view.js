@@ -3,7 +3,7 @@ import PanZoomControl from "../../KMN-utils-browser/pan-zoom-control.js";
 import { MaxRmsEng } from "../../mixer-main/audio-analysis/max-rms-eng.js";
 
 function getVertexShader() {
-  return `
+  return /*glsl*/`
     in vec2 vertexPosition;
     out vec2 textureCoord;
     uniform vec2 scale;
@@ -17,7 +17,7 @@ function getVertexShader() {
 
   // The shader that calculates the pixel values for the filled triangles
 function getFragmentShader() {
-  return `precision highp float;
+  return /*glsl*/`precision highp float;
   precision highp float;
   precision highp int;
   precision highp sampler2DArray;
@@ -35,6 +35,9 @@ function getFragmentShader() {
 
   uniform ivec2 windowSize;
 
+  uniform int[16] LODOffsets;
+  uniform int LODLevel;
+
   uniform bool removeAvgFromRMS;
   uniform bool showBeats;
 
@@ -49,16 +52,22 @@ function getFragmentShader() {
 
   const float log10 = 1.0 / log(10.0);
 
-  vec3 getDataIX(int ix, float y) {
-    if (ix < offset || ix>= offset + duration) {
-      return vec3(0.0);
-    }
+  vec3 getDataIX(int ix_in, float y) {
+    int len = int(ceil(pow(0.5,float(LODLevel)) * float(duration)));
+    int divider = int(pow(2.0, float(LODLevel)));
+    int ofs = LODOffsets[LODLevel] + offset / divider;
+    int ix = LODOffsets[LODLevel] + ix_in / divider;
+
+    // if (ix < ofs || ix>= ofs + len) {
+    //   return vec3(0.0);
+    // }
     ivec2 point = ivec2(ix % bufferWidth, ix / bufferWidth);
+
     vec4 left = texelFetch(analyzeTexturesLeft,  point, 0);
     vec4 right = texelFetch(analyzeTexturesRight,  point, 0);
     vec4 result = mix(left, right, smoothstep(0.49,0.51,y));
 
-    // Substract average from RMS?
+    // Substract average from RMS? No to unpredictable, gives new errors!
     // if (removeAvgFromRMS) {
     //   result.x -= result.y * result.y;
     // }
@@ -136,6 +145,7 @@ function getFragmentShader() {
     
     vec3 data1 = mixDataIX(readOffset,textureCoord.y);
     vec4 beatData = getBeatData(int(round(readOffset)));
+    float pxy = textureCoord.y / float(windowSize.y);
 
     // if (abs(playDistance) <= pi * 0.5) {
     //   data1 *= 1.0 + 0.5 * cos(playDistance);
@@ -143,8 +153,8 @@ function getFragmentShader() {
 
     vec3 dist = clamp(data1,0.0,1.0);
     dist = smoothstep(
-      dist - vec3(0.1),
-      dist + vec3(0.03), 
+      dist - vec3(pxy),
+      dist + vec3(pxy), 
       abs(vec3(1.0 - 2.0 * textureCoord.y)));
     vec3 clr = 1.0 - dist;
     clr.r = max(clr.r - clr.b * clr.b * 0.2, 0.0);
@@ -192,6 +202,7 @@ export class AudioView {
     this.dBRangeMax = 90.0;
     this.dBRangeRMS = 90.0;
     this.dBRangeEng = 90.0;
+    this.levelOfDetail = 0;
 
     this.showBeats = true;
   }
@@ -247,7 +258,7 @@ export class AudioView {
     let gl = this.gl;
     let shader = this.shader;
 
-    if (gl && shader && this.parentElement) {
+    if (gl && shader && this.parentElement && this.viewTexture0.texture) {
       
       let {w, h, dpr} = gl.updateCanvasSize(this.canvas);
 
@@ -278,6 +289,11 @@ export class AudioView {
         shader.u.linearDbMix?.set(   this.linearDbMixMax,    this.linearDbMixRMS ,    this.linearDbMixEng);
         shader.u.dBRange?.set(       this.dBRangeMax,        this.dBRangeRMS,         this.dBRangeEng);
         shader.u.showBeats?.set(this.showBeats);
+
+        if (shader.u["LODOffsets[0]"]) {
+          gl.uniform1iv(shader.u["LODOffsets[0]"], this.LODOffsets);
+        }
+        shader.u.LODLevel?.set(Math.round(this.levelOfDetail));
       
         shader.a.vertexPosition.en();
         shader.a.vertexPosition.set(this.vertexBuffer, 2 /* elements per vertex */);
@@ -293,7 +309,7 @@ export class AudioView {
         gl.uniform1i(shader.u.analyzeTexturesRight, 11);
         gl.activeTexture(gl.TEXTURE0);
 
-        if (this.beatBuffer) {
+        if (this.beatBuffer.texture) {
           gl.activeTexture(gl.TEXTURE12);
           gl.bindTexture(gl.TEXTURE_2D, this.beatBuffer.texture);
           gl.uniform1i(shader.u.beatTexture, 12);
@@ -319,12 +335,43 @@ export class AudioView {
     let sourceLen = ~~(viewData.length/2);
     let modulus = this.webglSynth.bufferWidth * 4;
     // let enlargedViewData = new Float32Array(Math.ceil(viewData.length/modulus) * modulus);
-    let viewBuf0 = new Float32Array(Math.ceil(sourceLen/modulus) * modulus);
-    let viewBuf1 = new Float32Array(Math.ceil(sourceLen/modulus) * modulus);
+    let viewBuf0 = new Float32Array(Math.ceil(sourceLen/modulus) * modulus * 2);
+    let viewBuf1 = new Float32Array(Math.ceil(sourceLen/modulus) * modulus * 2);
 
     viewBuf0.set(viewData.subarray(0,sourceLen));
     viewBuf1.set(viewData.subarray(sourceLen, sourceLen * 2));
 
+    this.LODOffsets = [0];
+    let target = viewBuf1;
+    let len = ~~sourceLen;
+    for (let lod = 0; lod < 8; lod++) {
+      let ofs_in = this.LODOffsets[lod] * 4.0;
+      let ofs_out = ofs_in + len;
+      this.LODOffsets.push(ofs_out / 4);
+      // count to len div2 rounded up
+      for (let ix = 0; ix < len + 1; ix += 2) {
+        for (let jx = 0; jx < 4; jx++) {
+          // TODO: This wraps arround to the 1st value of the average buf but to minor to see
+          //       and i don't want to break the loop here maybe fix afterwards
+          target[ofs_out++] = (target[ofs_in] + target[ofs_in + 4]) * 0.5;
+          ofs_in += 1;
+        }
+        ofs_in += 4;
+      }
+      len = ~~Math.ceil(len / 2);
+    }
+/*
+  We should pass the offsets as they are hard to calculate
+  len = 13 Math.ceil(Math.pow(0.5,LOD) * 13)
+     0..12 // 1 2 3 4 5 6 7 8 9 10 11 12 13
+  len = 7
+    13..19 // 1.5 3.5 5.5 7.5 9.5  11.5  13
+  len = 4
+    20..23 //   2.5     6.5     10.5     13
+  len = 2
+    24..25 //       4.5              13
+
+*/
     this.viewTexture0 = gl.createOrUpdateFloat32TextureBuffer(viewBuf0, 
                              // { bufferWidth:this.webglSynth.bufferWidth });
                              this.viewTexture0);
