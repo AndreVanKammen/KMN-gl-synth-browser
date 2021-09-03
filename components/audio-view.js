@@ -201,6 +201,9 @@ function getFragmentShader() {
     }
     beatData.rgb *= 1.0-0.8 * smoothstep(0.0,0.2,clr);
 
+    clr.r = max(0.0,clr.r-(clr.g+clr.b) * 0.2);
+    clr.g = max(0.0,clr.g-clr.b * 0.4);
+
     fragColor = vec4(clamp(pow(beatData.rgb / 12.0,vec3(2.0)) + clr.rgb * 0.9, 0.0,1.0) ,1.0);
   }
   `
@@ -357,7 +360,6 @@ export class AudioView {
     for (let lod = 0; lod < levelsOfDetail; lod++) {
       let ofs_in = ~~(this.LODOffsets[lod] * 4);
       let ofs_out = ofs_in + len * 4;
-      console.log(ofs_in, len);
       this.LODOffsets.push(ofs_out / 4);
       // count to len div2 rounded up
       for (let ix = 0; ix < len + 1; ix += 2) {
@@ -388,8 +390,10 @@ export class AudioView {
     let sourceLen = ~~(viewData.length/2);
     let modulus = this.webglSynth.bufferWidth * 4;
     // let enlargedViewData = new Float32Array(Math.ceil(viewData.length/modulus) * modulus);
-    let viewBuf0 = new Float32Array(Math.ceil(sourceLen/modulus) * modulus * 4);
-    let viewBuf1 = new Float32Array(Math.ceil(sourceLen/modulus) * modulus * 4);
+
+    // Make buffers twice as big for levelsOfDetail and add levelsof detail as extra because we round up
+    let viewBuf0 = new Float32Array(Math.ceil(sourceLen/modulus+ levelsOfDetail) * modulus * 2 );
+    let viewBuf1 = new Float32Array(Math.ceil(sourceLen/modulus+ levelsOfDetail) * modulus * 2 );
 
     viewBuf0.set(viewData.subarray(0,sourceLen));
     viewBuf1.set(viewData.subarray(sourceLen, sourceLen * 2));
