@@ -177,7 +177,7 @@ function getFragmentShader() {
     //   data1 *= 1.0 + 0.5 * cos(playDistance);
     // }
 
-    vec3 dist = clamp(data1,0.0,1.0);
+    vec3 dist = clamp(data1*0.8,0.0,1.0);
     dist = smoothstep(
       dist - vec3(pxy),
       dist + vec3(pxy), 
@@ -188,6 +188,11 @@ function getFragmentShader() {
     // beatData.rgb *= 0.0;
     if (!showBeats || textureCoord.y>0.1) {
       beatData.rgb *= 0.0;
+    } else {
+      beatData.rgb *= vec3(bvec3(
+        textureCoord.y<0.03333,
+        textureCoord.y>0.03333 && textureCoord.y<0.06667,
+        textureCoord.y>0.06667));
     }
     if (showBeats && beatData.a>100.0) {
       if (textureCoord.y>0.9) {
