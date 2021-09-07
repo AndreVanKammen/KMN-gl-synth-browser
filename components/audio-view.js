@@ -236,7 +236,7 @@ export class AudioView {
     this.dBRangeMax = 90.0;
     this.dBRangeRMS = 90.0;
     this.dBRangeEng = 90.0;
-    this.levelOfDetail = 0;
+    this.levelOfDetail = 6.0;
 
     this.showBeats = true;
   }
@@ -249,6 +249,7 @@ export class AudioView {
 
     this.canvas = this.options.canvas || this.parentElement.$el({tag:'canvas', cls:'analyzerCanvas'});
     
+    /** @type {PanZoomControl} */
     this.control = this.options.control || new PanZoomControl(this.parentElement, {
       minYScale: 1.0,
       maxYScale: 1.0,
