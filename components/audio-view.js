@@ -39,6 +39,7 @@ function getFragmentShader() {
   uniform int[${levelsOfDetail}] LODOffsets;
   uniform float LODLevel;
 
+  uniform bool rekordBoxColors;
   uniform bool removeAvgFromRMS;
   uniform bool showBeats;
 
@@ -84,7 +85,8 @@ function getFragmentShader() {
     vec3 low = getDataIX0(int(floor(ix)),y,LODLevel);
     vec3 high = getDataIX0(int(ceil(ix)),y,LODLevel);
 
-    return mix(low,high,(1.0+sin((fract(ix) * 2.0 - 1.0) * pi * 0.5))*0.5);//fract(ix));
+    // return mix(low,high,(1.0+sin((fract(ix) * 2.0 - 1.0) * pi * 0.5))*0.5)
+    return mix(low,high,fract(ix));
   }
 
   vec3 getDataIX(float ix_in, float y,float LODLevel) {
@@ -189,13 +191,13 @@ function getFragmentShader() {
     if (!showBeats || textureCoord.y>0.1) {
       beatData.rgb *= 0.0;
     } else {
-      beatData.rgb *= vec3(bvec3(
-        textureCoord.y<0.03333,
-        textureCoord.y>0.03333 && textureCoord.y<0.06667,
-        textureCoord.y>0.06667));
-    }
-    if (showBeats && beatData.a>100.0) {
-      if (textureCoord.y>0.9) {
+      beatData.rgba *= vec4(bvec4(
+        textureCoord.y < 0.025,
+        textureCoord.y > 0.025 && textureCoord.y<0.050,
+        textureCoord.y > 0.050 && textureCoord.y<0.075,
+        textureCoord.y > 0.075
+        ));
+      if (beatData.a>100.0) {
         beatData.rgb = vec3(beatData.a / 1000.0);
       }
     }
@@ -206,10 +208,20 @@ function getFragmentShader() {
     }
     beatData.rgb *= 1.0-0.8 * smoothstep(0.0,0.2,clr);
 
-    clr.r = max(0.0,clr.r-(clr.g+clr.b) * 0.2);
-    clr.g = max(0.0,clr.g-clr.b * 0.4);
 
-    fragColor = vec4(clamp(pow(beatData.rgb / 12.0,vec3(2.0)) + clr.rgb * 0.9, 0.0,1.0) ,1.0);
+    if (rekordBoxColors) {
+      vec3 d = clr;
+      clr = d.r * vec3(0            ,  83.0 / 255.0, 225.0 / 255.0);
+      clr *= (1.0 - d.g);
+      clr += d.g * vec3(179.0 / 255.0, 102.0 / 255.0,   7.0 / 255.0);
+      clr *= (1.0 - d.b);
+      clr += d.b * vec3(245.0 / 255.0, 235.0 / 255.0, 215.0 / 255.0);
+    } else {
+      clr.r = max(0.0,clr.r-(clr.g+clr.b) * 0.2);
+      clr.g = max(0.0,clr.g-clr.b * 0.4);
+    }
+
+    fragColor = vec4(clamp(pow(beatData.rgb / 12.0,vec3(2.0)) + clr.rgb, 0.0,1.0) ,1.0);
   }
   `
 }
@@ -237,6 +249,7 @@ export class AudioView {
     this.dBRangeRMS = 90.0;
     this.dBRangeEng = 90.0;
     this.levelOfDetail = 6.0;
+    this.rekordBoxColors = false;
 
     this.showBeats = true;
   }
@@ -329,6 +342,7 @@ export class AudioView {
           gl.uniform1iv(shader.u["LODOffsets[0]"], this.LODOffsets);
         }
         shader.u.LODLevel?.set((this.levelOfDetail));
+        shader.u.rekordBoxColors?.set((this.rekordBoxColors));
       
         shader.a.vertexPosition.en();
         shader.a.vertexPosition.set(this.vertexBuffer, 2 /* elements per vertex */);
