@@ -1,4 +1,5 @@
 import WebGLSynth from "../../KMN-gl-synth.js/webgl-synth.js";
+import { animationFrame } from "../../KMN-utils-browser/animation-frame.js";
 import PanZoomControl from "../../KMN-utils-browser/pan-zoom-control.js";
 
 const levelsOfDetail = 32;
@@ -233,7 +234,6 @@ export class AudioView {
     this.updateCanvasBound = this.updateCanvas.bind(this);
     this.dataOffset = 0;
     this.dataLength = 1000;
-    this.onClick = (x, y) => {};
     this.onGetPlayPos = () => -1;
 
     this.preScaleMax = 1.0;
@@ -269,7 +269,6 @@ export class AudioView {
       minXScale: 1.0,
       maxXScale: 1000.0
     });
-    this.control.onClick = (x,y) => this.onClick(x,y);
   }
 
   /**
@@ -294,7 +293,7 @@ export class AudioView {
       2);
 
     if (!this.options.noRequestAnimationFrame) {
-      window.requestAnimationFrame(this.updateCanvasBound);
+      animationFrame(this.updateCanvasBound);
     }
 
     this.viewTexture0 = { bufferWidth:this.webglSynth.bufferWidth };
@@ -319,17 +318,13 @@ export class AudioView {
         // Tell WebGL how to convert from clip space to pixels
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         gl.useProgram(shader);
-        this.currentScaleX = (this.currentScaleX || 0.0) * 0.9 + 0.1 * this.control.xScale;
-        this.currentScaleY = (this.currentScaleY || 0.0) * 0.9 + 0.1 * this.control.yScale;
-
-        this.currentOffsetX = (this.currentOffsetX || 0.0) * 0.9 + 0.1 * this.control.xOffset;
-        this.currentOffsetY = (this.currentOffsetY || 0.0) * 0.9 + 0.1 * this.control.yOffset;
 
         shader.u.offset?.set(this.dataOffset); // this.webglSynth.processCount);s
         shader.u.duration?.set(this.dataLength);
-        shader.u.scale?.set(this.currentScaleX, this.currentScaleY);
-        shader.u.position?.set(this.currentOffsetX, this.currentOffsetY);
         shader.u.windowSize?.set(w, h);
+        shader.u.scale?.set(this.control.xScaleSmooth, this.control.yScaleSmooth);
+        shader.u.position?.set(this.control.xOffsetSmooth, this.control.yOffsetSmooth);
+
 
         // shader.u.removeAvgFromRMS.set(false);
         shader.u.preScale?.set(      this.preScaleMax,       this.preScaleRMS ,       this.preScaleEng);
@@ -370,7 +365,7 @@ export class AudioView {
       }
     }
     if (!this.options.noRequestAnimationFrame) {
-      window.requestAnimationFrame(this.updateCanvasBound);
+      animationFrame(this.updateCanvasBound);
     }
   }
 

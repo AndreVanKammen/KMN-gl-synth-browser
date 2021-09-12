@@ -151,7 +151,7 @@ function getFragmentShader() {
   `
 }
 
-export class ControlLineEditor {
+export class BeatGridEditor {
   constructor (options) {
     this.options = options;
     this.updateCanvasBound = this.updateCanvas.bind(this);
@@ -176,16 +176,15 @@ export class ControlLineEditor {
       minXScale: 1.0,
       maxXScale: 1000.0
     });
-    // this.oldClick = this.control.onClick;
-    this.control.addHandler(this);
-    // this.control.onClick = this.handleClick.bind(this)
-    // this.control.onMove = this.handleMove.bind(this)
-    // this.control.onDown = this.handleDown.bind(this)
-    // this.control.onUp = this.handleUp.bind(this)
-    // this.control.onKeyDown = this.control.onKeyUp = this.handleKey.bind(this)
+    this.oldClick = this.control.onClick;
+    this.control.onClick = this.handleClick.bind(this)
+    this.control.onMove = this.handleMove.bind(this)
+    this.control.onDown = this.handleDown.bind(this)
+    this.control.onUp = this.handleUp.bind(this)
+    this.control.onKeyDown = this.control.onKeyUp = this.handleKey.bind(this)
 
     // Create two triangles to form a square that covers the whole canvas
-    this.udatePoints( [
+    this.udateGrid( [
         {time:0.0, value: 0.7}, 
         {time:1.0, value: 0.7}
       ], 1.0);
@@ -209,42 +208,42 @@ export class ControlLineEditor {
     }
   }
 
-  udatePoints(points, duration) {
-    this.points = points;
+  udateGrid(lines, duration) {
+    this.lines = lines;
     this.duration = duration;
     
     this.minValue = 0.0;
     this.maxValue = 1.0;
     this.valueRange = this.maxValue - this.minValue;
 
-    this.updatePointData();
+    this.updateLines();
   }
 
-  updatePointData(skipUpdate = false) {
+  updateLines(skipUpdate = false) {
     const gl = this.gl;
     // TODO size is multiple check for more then 1000 points
     const data = this.pointData = new Float32Array(4096);//this.points.length * 4.0);
     let ofs = 0;
-    for (const point of this.points) {
-      data[ofs++] = (point.time / this.duration) * 2.0 - 1.0;
-      data[ofs++] = (point.value - this.minValue) / this.valueRange * 2.0 - 1.0;
-      data[ofs++] = 0; // use for hover and stuff
+    for (const line of this.lines) {
+      data[ofs++] = (line.time / this.duration) * 2.0 - 1.0;
+      data[ofs++] = line.beatNr;
+      data[ofs++] = 0;
       data[ofs++] = 0;
     }
     if (!skipUpdate) {
-      this.pointInfo = gl.createOrUpdateFloat32TextureBuffer(data, this.pointInfo, 0, ofs);
+      this.lineInfo = gl.createOrUpdateFloat32TextureBuffer(data, this.lineInfo, 0, ofs);
     }
   }
 
   createNewPoint(x,y) {
-    let pa = this.points[this.selectedLineIx];
-    let pb = this.points[this.selectedLineIx + 1];
+    let pa = this.lines[this.selectedLineIx];
+    let pb = this.lines[this.selectedLineIx + 1];
     const lineX = this.selectedLineOffset;
     let newTime = (pa.time * (1.0 - lineX)) + lineX * pb.time;
     let newValue = (pa.value * (1.0 - lineX)) + lineX * pb.value;
     console.log('click', newTime, newValue);
-    this.points.splice(this.selectedLineIx + 1, 0, { time: newTime, value: newValue });
-    this.updatePointData();
+    this.lines.splice(this.selectedLineIx + 1, 0, { time: newTime, value: newValue });
+    this.updateLines();
     this.selectedPointIx = this.selectedLineIx + 1;
   }
 
@@ -256,112 +255,42 @@ export class ControlLineEditor {
     } else if (this.selectedPointIx !== -1) {
       let newClickTime = performance.now();
       if (this.lastClickTime && ((newClickTime - this.lastClickTime) < 400)) {
-        this.points.splice(this.selectedPointIx, 1);
-        this.updatePointData();
+        this.lines.splice(this.selectedPointIx, 1);
+        this.updateLines();
       }
       this.lastClickTime = newClickTime;
     } else {
-      // this.oldClick(x, y);
+      this.oldClick(x, y);
       this.lastClickTime = undefined;
-      return false;
     }
-    return true;
   }
   
   handleDown(x,y) {
     this.updateSelect(x,y);
-    if (this.selectedLineIx !== -1 && this.control.event.ctrlKey) {
-      this.createNewPoint(x,y);
-      return true;
-    }
-    if (this.selectedPointIx !== -1 || this.selectedLineIx !== -1) {
+    if (this.selectedLineIx !== -1) {
       this.mouseDownOnPoint = {x,y};
-      this.mouseDownMinTime = 0;
-      this.mouseDownMaxTime = this.duration;
-      if (this.selectedPointIx > 0) {
-        this.mouseDownMinTime = this.points[this.selectedPointIx-1].time;
-      
-        if (this.selectedPointIx < this.points.length - 1) {
-          this.mouseDownMaxTime = this.points[this.selectedPointIx+1].time;
-        }
-        this.mouseDownTime = this.points[this.selectedPointIx].time;
-        this.mouseDownValue = this.points[this.selectedPointIx].value;
-
-        this.pointData[this.selectedPointIx * 4 + 2] = 1.0;
-      } else {
-        if (!this.control.event.ctrlKey) {
-          this.mouseDownValue = this.points[this.selectedLineIx].value;
-          this.mouseDownValue2 = this.points[this.selectedLineIx + 1].value;
-          this.pointData[this.selectedLineIx * 4 + 2] = 1.0;
-          this.pointData[this.selectedLineIx * 4 + 6] = 1.0;
-        }
-      }
-      this.pointInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.pointData, this.pointInfo);
-      return true;
+      //this.pointData[this.selectedLineIx * 4 + 2] = 1.0;
+      this.lineInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.pointData, this.lineInfo);
+      return false;
     }
-    return false;
+    return true;
   }
   handleMove(x,y) {
     if (this.mouseDownOnPoint) {
-      console.log('.');
       let dx = this.mouseDownOnPoint.x - x;
       let dy = this.mouseDownOnPoint.y - y;
-      if (!this.control.event.ctrlKey && this.selectedLineIx !== -1) {
-
-        let newValue1 = this.mouseDownValue - dy * this.valueRange;
-        let newValue2 = this.mouseDownValue2 - dy * this.valueRange;
-        if (newValue2 < 0) {
-          newValue1 -= newValue2;
-          newValue2 = 0;
-        }
-        if (newValue1 < 0) {
-          newValue2 -= newValue1;
-          newValue1 = 0;
-        }
-        let dyCorrection = 0.0;
-        if (newValue2 > this.maxValue) {
-          dyCorrection = newValue2 - this.maxValue;
-        }
-        if (newValue1 > this.maxValue) {
-          dyCorrection = Math.max(dyCorrection,newValue1 - this.maxValue);
-        }
-        newValue1 -= dyCorrection;
-        newValue2 -= dyCorrection;
-        this.points[this.selectedLineIx].value = newValue1;
-        this.points[this.selectedLineIx + 1].value = newValue2;
-
-        this.updatePointData(true);
-
-        this.pointData[this.selectedLineIx * 4 + 2] = 1.0;
-        this.pointData[this.selectedLineIx * 4 + 3] = 2.0;
-        this.pointData[this.selectedLineIx * 4 + 6] = 1.0;
-      } else {
-        let newTime = this.mouseDownTime - dx * this.duration;
-        newTime = Math.min(Math.max(newTime, this.mouseDownMinTime),this.mouseDownMaxTime);
-        this.points[this.selectedPointIx].time = newTime;
-  
-        let newValue = this.mouseDownValue - dy * this.valueRange;
-        newValue = Math.min(Math.max(newValue, this.minValue),this.maxValue);
-        this.points[this.selectedPointIx].value = newValue;
-  
-        this.updatePointData(true);
-        this.pointData[this.selectedPointIx * 4 + 2] = 1.0;
-      }
     } else {
       this.updateSelect(x,y);
     }
-    this.pointInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.pointData, this.pointInfo);
-    return false;
+    this.lineInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.pointData, this.lineInfo);
   }
   handleUp(x,y) {
     this.mouseDownOnPoint = null;
-    return false;
   }
-  handleKey(x,y, up) {
+  handleKey(x,y) {
     console.log('key', this.control.event);
     this.updateSelect(x,y);
-    this.pointInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.pointData, this.pointInfo);
-    return false;
+    this.lineInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.pointData, this.lineInfo);
   }
   updateSelect(x,y) {
     const pointSize = 20.0;
@@ -426,7 +355,7 @@ export class ControlLineEditor {
     let gl = this.gl;
     let shader = this.shader;
 
-    if (gl && shader && this.parentElement && this.points?.length > 0) {
+    if (gl && shader && this.parentElement && this.lines?.length > 0) {
 
       let {w, h, dpr} = gl.updateCanvasSize(this.canvas);
 
@@ -440,20 +369,25 @@ export class ControlLineEditor {
         // Tell WebGL how to convert from clip space to pixels
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         gl.useProgram(shader);
+        this.currentScaleX = (this.currentScaleX || 0.0) * 0.9 + 0.1 * this.control.xScale;
+        this.currentScaleY = (this.currentScaleY || 0.0) * 0.9 + 0.1 * this.control.yScale;
+
+        this.currentOffsetX = (this.currentOffsetX || 0.0) * 0.9 + 0.1 * this.control.xOffset;
+        this.currentOffsetY = (this.currentOffsetY || 0.0) * 0.9 + 0.1 * this.control.yOffset;
 
         if (shader.u.pointDataTexture) {
           gl.activeTexture(gl.TEXTURE2);
-          gl.bindTexture(gl.TEXTURE_2D, this.pointInfo.texture);
+          gl.bindTexture(gl.TEXTURE_2D, this.lineInfo.texture);
           gl.uniform1i(shader.u.pointDataTexture, 2);
           gl.activeTexture(gl.TEXTURE0);
         }
-
+  
         shader.u.windowSize?.set(w,h);
-        shader.u.scale?.set(this.control.xScaleSmooth, this.control.yScaleSmooth);
-        shader.u.position?.set(this.control.xOffsetSmooth, this.control.yOffsetSmooth);
+        shader.u.scale?.set(this.currentScaleX, this.currentScaleY);
+        shader.u.position?.set(this.currentOffsetX, this.currentOffsetY);
         shader.u.dpr?.set(dpr);
 
-        gl.drawArrays(gl.TRIANGLES, 0, (this.points.length-1) * 6.0 );
+        gl.drawArrays(gl.TRIANGLES, 0, (this.lines.length-1) * 6.0 );
       }
     }
     if (!this.options.noRequestAnimationFrame) {
