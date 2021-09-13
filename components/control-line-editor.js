@@ -115,7 +115,7 @@ function getFragmentShader() {
     float hasPoint = 1.0 - smoothstep(pointWidth, pointWidth + 1.5, pointDist);
 
     if (lineStart.w > 0.0) {
-      lineWidth = 2.0;
+      lineWidth = 2.0 * dpr;
       if (lineStart.w < 1.0) {
         vec2 newPointPos = mix(lineStartScreen, lineEndScreen, lineStart.w);
         vec2 newPointDelta = abs(textureCoordScreen - newPointPos);
@@ -176,28 +176,14 @@ export class ControlLineEditor {
       minXScale: 1.0,
       maxXScale: 1000.0
     });
-    // this.oldClick = this.control.onClick;
-    this.control.addHandler(this);
-    // this.control.onClick = this.handleClick.bind(this)
-    // this.control.onMove = this.handleMove.bind(this)
-    // this.control.onDown = this.handleDown.bind(this)
-    // this.control.onUp = this.handleUp.bind(this)
-    // this.control.onKeyDown = this.control.onKeyUp = this.handleKey.bind(this)
 
-    // Create two triangles to form a square that covers the whole canvas
+    // this.control.addHandler(this);
+
     this.udatePoints( [
         {time:0.0, value: 0.7}, 
         {time:1.0, value: 0.7}
       ], 1.0);
 
-    // for (let ix = 0; ix < 1000; ix++) {
-    //   const progress = ix / 1000;
-    //   this.points.push({
-    //     time: 4.0 + progress * 2.0,
-    //     value: 0.5 + 0.5 * Math.sin(progress * Math.PI * 2.0)
-    //   });
-    // }
-    // this.points.push({time:7.0, value: 0.2});
 
     this.shader = gl.getShaderProgram(
       getVertexShader(), 
@@ -274,7 +260,7 @@ export class ControlLineEditor {
       this.createNewPoint(x,y);
       return true;
     }
-    if (this.selectedPointIx !== -1 || this.selectedLineIx !== -1) {
+    if (this.selectedPointIx > 0 || this.selectedLineIx !== -1) {
       this.mouseDownOnPoint = {x,y};
       this.mouseDownMinTime = 0;
       this.mouseDownMaxTime = this.duration;
@@ -374,7 +360,7 @@ export class ControlLineEditor {
     let selectedIx = -1;
     let lineIx = -1;
     let lastSdx = 0.0;
-    while (ofs < this.pointData.length) {
+    while (ofs < this.points.length * 4) {
       const sdx = (this.pointData[ofs] - xOfs) * xFact;
       const dx = Math.abs(sdx);
       if (dx < pointSize) {

@@ -248,7 +248,7 @@ export class AudioView {
     this.dBRangeMax = 90.0;
     this.dBRangeRMS = 90.0;
     this.dBRangeEng = 90.0;
-    this.levelOfDetail = 6.0;
+    this.levelOfDetail = 2.7;
     this.rekordBoxColors = false;
 
     this.showBeats = true;
@@ -319,12 +319,13 @@ export class AudioView {
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         gl.useProgram(shader);
 
+        shader.u.playPos?.set(this.onGetPlayPos() * this.dataLength);
+
         shader.u.offset?.set(this.dataOffset); // this.webglSynth.processCount);s
         shader.u.duration?.set(this.dataLength);
         shader.u.windowSize?.set(w, h);
         shader.u.scale?.set(this.control.xScaleSmooth, this.control.yScaleSmooth);
         shader.u.position?.set(this.control.xOffsetSmooth, this.control.yOffsetSmooth);
-
 
         // shader.u.removeAvgFromRMS.set(false);
         shader.u.preScale?.set(      this.preScaleMax,       this.preScaleRMS ,       this.preScaleEng);
@@ -341,8 +342,6 @@ export class AudioView {
       
         shader.a.vertexPosition.en();
         shader.a.vertexPosition.set(this.vertexBuffer, 2 /* elements per vertex */);
-
-        shader.u.playPos?.set(this.onGetPlayPos() * this.dataLength);
 
         gl.activeTexture(gl.TEXTURE10);
         gl.bindTexture(gl.TEXTURE_2D, this.recordAnalyzeBuffer.leftTex);

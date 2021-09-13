@@ -17,38 +17,35 @@ function getVertexShader() {
     uniform vec2 position;
     uniform vec2 windowSize;
 
-    flat out vec4 lineStart;
-    flat out vec4 lineEnd;
+    flat out vec4 lineInfo;
 
     flat out vec2 lineStartScreen;
     flat out vec2 lineEndScreen;
-
+  
     out vec2 textureCoord;
     out vec2 textureCoordScreen;
 
     void main(void) {
       int pointIx = gl_VertexID / 6;
 
-      lineStart = texelFetch(pointDataTexture, ivec2(pointIx % 1024, pointIx / 1024), 0);
-      pointIx++;
-      lineEnd = texelFetch(pointDataTexture, ivec2(pointIx % 1024, pointIx / 1024), 0);
+      lineInfo = texelFetch(pointDataTexture, ivec2(pointIx % 1024, pointIx / 1024), 0);
       
       int subPointIx = gl_VertexID % 6;
       vec2 pos;
       if (subPointIx == 1 || subPointIx >= 4) {
-        pos.x = lineStart.x - 0.1;
+        pos.x = lineInfo.x - 0.1;
       } else {
-        pos.x = lineEnd.x + 0.1;
+        pos.x = lineInfo.x + 0.1;
       }
 
       if (subPointIx <= 1 || subPointIx == 4) {
-        pos.y = min(lineStart.y, lineEnd.y) - 0.1;
+        pos.y = -1.0;
       } else {
-        pos.y = max(lineStart.y, lineEnd.y) + 0.1;
+        pos.y = 1.0;
       }
 
-      lineStartScreen = lineStart.xy;
-      lineEndScreen = lineEnd.xy;
+      lineStartScreen = vec2(lineInfo.x, -1.0);
+      lineEndScreen = vec2(lineInfo.x, 1.0);
 
       textureCoord = pos;
       pos = (pos - position * 2.0 + 1.0) * scale - 1.0;
@@ -75,8 +72,14 @@ function getFragmentShader() {
   uniform vec2 windowSize;
   uniform float dpr;
 
-  flat in vec4 lineStart;
-  flat in vec4 lineEnd;
+  uniform vec2 scale;
+  uniform vec2 position;
+
+  uniform int beatsPerBar;
+  uniform float timePerBeat;
+  uniform float duration;
+
+  flat in vec4 lineInfo;
 
   flat in vec2 lineStartScreen;
   flat in vec2 lineEndScreen;
@@ -93,60 +96,42 @@ function getFragmentShader() {
     return length(pa - ba * h);
   }
 
-  const vec3 pointBorderColor = vec3(0.8);
-  const vec3 lineColor = vec3(0.6,0.6,0.6);
+  const vec4 beatColor = vec4(0.2,0.2,0.2, 0.5);
+  const vec4 barColor = vec4(0.5,0.5,0.5, 0.6);
+  const vec4 bar4Color = vec4(0.6,0.6,0.6, 0.7);
+  const vec4 bar16Color = vec4(0.8,0.8,0.8, 0.8);
 
   void main(void) {
     vec4 color = vec4(0.0);
-    float lineDist = line(textureCoordScreen.xy, lineStartScreen.xy, lineEndScreen.xy);
-    float pointDist =
-            // min(distance(textureCoordScreen.xy, lineEndScreen.xy  ),
-                distance(textureCoordScreen.xy, lineStartScreen.xy);
+    // float lineDist = line(textureCoordScreen.xy, lineStartScreen.xy, lineEndScreen.xy);
+    float lineDist = abs(textureCoordScreen.x - lineStartScreen.x);
 
-    vec3 pointColor = vec3(0.19,0.19,0.9);
-    float pointBorderWidth = 0.25 * dpr;
     float lineWidth = 0.5 * dpr;
-    float pointWidth = 6.0 * dpr;
-    if (lineStart.z > 0.0) {
-      pointWidth = 10.0 * dpr;
+
+    float durationOnScreen = duration / scale.x;
+    float beatsOnSreen = durationOnScreen / timePerBeat;
+    float pixelsPerLine = windowSize.x / beatsOnSreen;
+
+    vec4 lineColor = beatColor;
+    if ((int(lineInfo.y) % (beatsPerBar * 16)) == 0) {
+      pixelsPerLine *= 64.0;
+      lineColor = bar16Color;
+    } else if ((int(lineInfo.y) % (beatsPerBar * 4)) == 0) {
+      pixelsPerLine *= 16.0;
+      lineColor = bar4Color;
+    } else if ((int(lineInfo.y) % beatsPerBar) == 0) {
+      pixelsPerLine *= 4.0;
+      lineColor = barColor;
+    } else {
+      lineColor = beatColor;
     }
-
-    float hasPointBorder = 1.0 - smoothstep(pointBorderWidth, pointBorderWidth + 1.25, abs(pointDist - pointWidth));
-    float hasPoint = 1.0 - smoothstep(pointWidth, pointWidth + 1.5, pointDist);
-
-    if (lineStart.w > 0.0) {
-      lineWidth = 2.0;
-      if (lineStart.w < 1.0) {
-        vec2 newPointPos = mix(lineStartScreen, lineEndScreen, lineStart.w);
-        vec2 newPointDelta = abs(textureCoordScreen - newPointPos);
-        float newPointDist = length(newPointDelta);
-        // pointColor = vec3(0.0);
-
-        float newHasPoint = 1.0 - smoothstep(14.0, 15.5, newPointDist);
-        hasPoint = max(hasPoint, newHasPoint);
-        hasPointBorder = max(hasPointBorder - newHasPoint, 1.0 - smoothstep(0.5, 2.0, abs(newPointDist-14.0)));
-
-        float plus = min(1.0 - smoothstep(6.0, 7.5, newPointDist), 
-                         1.0 - smoothstep(0.5, 2.0, min(newPointDelta.x, newPointDelta.y) ) );
-        hasPointBorder = max(hasPointBorder, plus);
-
-      }
-    }
+    lineColor.a *= clamp(pow(pixelsPerLine,0.3) - 1.8, 0.0, 1.0);
 
     float hasLine = 1.0 - smoothstep(lineWidth, lineWidth + 1.5, lineDist);
 
-    hasLine = max(hasLine - hasPoint, 0.0);
-    hasPoint = max(hasPoint - hasPointBorder, 0.0);
-
-    color.rgb = hasPoint       * pointColor +
-                hasPointBorder * pointBorderColor +
-                hasLine        * lineColor;
-                  
-    color.a = max(max(hasPoint, hasLine), hasPointBorder);
-    if (color.a > 0.001) {
-      color.rgb = min(color.rgb / (color.a + 0.01), 1.0);
-    }
-    fragColor = pow(color,vec4(1.0/2.2));
+    color = hasLine * lineColor;
+ 
+    fragColor = vec4(pow(color.rgb,vec3(1.0/2.2)),color.a);
   }
   `
 }
@@ -158,6 +143,9 @@ export class BeatGridEditor {
     this.width  = 10;
     this.height = 10;
     this.mouseDownOnPoint = null;
+    this.beatsPerBar = 4;
+    this.timePerBeat = 1.0;
+    this.duration = 10.0;
   }
 
   /**
@@ -176,27 +164,16 @@ export class BeatGridEditor {
       minXScale: 1.0,
       maxXScale: 1000.0
     });
-    this.oldClick = this.control.onClick;
-    this.control.onClick = this.handleClick.bind(this)
-    this.control.onMove = this.handleMove.bind(this)
-    this.control.onDown = this.handleDown.bind(this)
-    this.control.onUp = this.handleUp.bind(this)
-    this.control.onKeyDown = this.control.onKeyUp = this.handleKey.bind(this)
 
-    // Create two triangles to form a square that covers the whole canvas
+    // this.control.addHandler(this);
+
     this.udateGrid( [
-        {time:0.0, value: 0.7}, 
-        {time:1.0, value: 0.7}
-      ], 1.0);
-
-    // for (let ix = 0; ix < 1000; ix++) {
-    //   const progress = ix / 1000;
-    //   this.points.push({
-    //     time: 4.0 + progress * 2.0,
-    //     value: 0.5 + 0.5 * Math.sin(progress * Math.PI * 2.0)
-    //   });
-    // }
-    // this.points.push({time:7.0, value: 0.2});
+        {time:0.0, beatNr: 1.0}, 
+        {time:1.0, beatNr: 2.0},
+        {time:2.0, beatNr: 3.0},
+        {time:3.0, beatNr: 4.0},
+        {time:4.0, beatNr: 5.0}
+      ], 1.0, 10.0);
 
     this.shader = gl.getShaderProgram(
       getVertexShader(), 
@@ -208,9 +185,10 @@ export class BeatGridEditor {
     }
   }
 
-  udateGrid(lines, duration) {
+  udateGrid(lines, timePerBeat, duration) {
     this.lines = lines;
     this.duration = duration;
+    this.timePerBeat = timePerBeat;
     
     this.minValue = 0.0;
     this.maxValue = 1.0;
@@ -235,18 +213,6 @@ export class BeatGridEditor {
     }
   }
 
-  createNewPoint(x,y) {
-    let pa = this.lines[this.selectedLineIx];
-    let pb = this.lines[this.selectedLineIx + 1];
-    const lineX = this.selectedLineOffset;
-    let newTime = (pa.time * (1.0 - lineX)) + lineX * pb.time;
-    let newValue = (pa.value * (1.0 - lineX)) + lineX * pb.value;
-    console.log('click', newTime, newValue);
-    this.lines.splice(this.selectedLineIx + 1, 0, { time: newTime, value: newValue });
-    this.updateLines();
-    this.selectedPointIx = this.selectedLineIx + 1;
-  }
-
   handleClick(x, y) {
     if (this.selectedLineIx !== -1) {
       // Done in mouse down now
@@ -260,9 +226,9 @@ export class BeatGridEditor {
       }
       this.lastClickTime = newClickTime;
     } else {
-      this.oldClick(x, y);
       this.lastClickTime = undefined;
     }
+    return false;
   }
   
   handleDown(x,y) {
@@ -280,17 +246,20 @@ export class BeatGridEditor {
       let dx = this.mouseDownOnPoint.x - x;
       let dy = this.mouseDownOnPoint.y - y;
     } else {
-      this.updateSelect(x,y);
+      // this.updateSelect(x,y);
     }
     this.lineInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.pointData, this.lineInfo);
+    return false;
   }
   handleUp(x,y) {
     this.mouseDownOnPoint = null;
+    return false;
   }
-  handleKey(x,y) {
+  handleKey(x,y,up) {
     console.log('key', this.control.event);
     this.updateSelect(x,y);
     this.lineInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.pointData, this.lineInfo);
+    return false;
   }
   updateSelect(x,y) {
     const pointSize = 20.0;
@@ -369,11 +338,6 @@ export class BeatGridEditor {
         // Tell WebGL how to convert from clip space to pixels
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         gl.useProgram(shader);
-        this.currentScaleX = (this.currentScaleX || 0.0) * 0.9 + 0.1 * this.control.xScale;
-        this.currentScaleY = (this.currentScaleY || 0.0) * 0.9 + 0.1 * this.control.yScale;
-
-        this.currentOffsetX = (this.currentOffsetX || 0.0) * 0.9 + 0.1 * this.control.xOffset;
-        this.currentOffsetY = (this.currentOffsetY || 0.0) * 0.9 + 0.1 * this.control.yOffset;
 
         if (shader.u.pointDataTexture) {
           gl.activeTexture(gl.TEXTURE2);
@@ -383,9 +347,12 @@ export class BeatGridEditor {
         }
   
         shader.u.windowSize?.set(w,h);
-        shader.u.scale?.set(this.currentScaleX, this.currentScaleY);
-        shader.u.position?.set(this.currentOffsetX, this.currentOffsetY);
+        shader.u.scale?.set(this.control.xScaleSmooth, this.control.yScaleSmooth);
+        shader.u.position?.set(this.control.xOffsetSmooth, this.control.yOffsetSmooth);
         shader.u.dpr?.set(dpr);
+        shader.u.beatsPerBar?.set(this.beatsPerBar);
+        shader.u.timePerBeat?.set(this.timePerBeat);
+        shader.u.duration?.set(this.duration);
 
         gl.drawArrays(gl.TRIANGLES, 0, (this.lines.length-1) * 6.0 );
       }
