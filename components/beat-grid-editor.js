@@ -16,11 +16,12 @@ function getVertexShader() {
     uniform vec2 scale;
     uniform vec2 position;
     uniform vec2 windowSize;
+    uniform float dpr;
+    uniform float duration;
 
     flat out vec4 lineInfo;
 
-    flat out vec2 lineStartScreen;
-    flat out vec2 lineEndScreen;
+    flat out float lineXScreen;
   
     out vec2 textureCoord;
     out vec2 textureCoordScreen;
@@ -29,13 +30,17 @@ function getVertexShader() {
       int pointIx = gl_VertexID / 6;
 
       lineInfo = texelFetch(pointDataTexture, ivec2(pointIx % 1024, pointIx / 1024), 0);
-      
+
+      float durationOnScreen = duration / scale.x;
+      // TODO: why is this of by a factor of 50? dpr needs to be in there
+      float pixelsSize = durationOnScreen / windowSize.x / 50.0;
+        
       int subPointIx = gl_VertexID % 6;
       vec2 pos;
       if (subPointIx == 1 || subPointIx >= 4) {
-        pos.x = lineInfo.x - 0.1;
+        pos.x = lineInfo.x - pixelsSize;
       } else {
-        pos.x = lineInfo.x + 0.1;
+        pos.x = lineInfo.x + pixelsSize;
       }
 
       if (subPointIx <= 1 || subPointIx == 4) {
@@ -44,16 +49,12 @@ function getVertexShader() {
         pos.y = 1.0;
       }
 
-      lineStartScreen = vec2(lineInfo.x, -1.0);
-      lineEndScreen = vec2(lineInfo.x, 1.0);
+      lineXScreen = lineInfo.x;
 
       textureCoord = pos;
       pos = (pos - position * 2.0 + 1.0) * scale - 1.0;
-      lineStartScreen = (lineStartScreen - position * 2.0 + 1.0) * scale - 1.0;
-      lineEndScreen = (lineEndScreen - position * 2.0 + 1.0) * scale - 1.0;
-
-      lineStartScreen = (lineStartScreen + 1.0) * 0.5 * windowSize;
-      lineEndScreen = (lineEndScreen + 1.0) * 0.5 * windowSize;
+      lineXScreen = (lineXScreen - position.x * 2.0 + 1.0) * scale.x - 1.0;
+      lineXScreen = (lineXScreen + 1.0) * 0.5 * windowSize.x;
       textureCoordScreen = (pos + 1.0) * 0.5 * windowSize;
 
       gl_Position = vec4(pos, 0.0, 1.0);
@@ -81,22 +82,13 @@ function getFragmentShader() {
 
   flat in vec4 lineInfo;
 
-  flat in vec2 lineStartScreen;
-  flat in vec2 lineEndScreen;
+  flat in float lineXScreen;
 
   in vec2 textureCoord;
   in vec2 textureCoordScreen;
   out vec4 fragColor;
 
-  float line(vec2 p, vec2 a, vec2 b)
-  {
-    vec2 pa = p - a;
-    vec2 ba = b - a;
-    float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
-    return length(pa - ba * h);
-  }
-
-  const vec4 beatColor = vec4(0.2,0.2,0.2, 0.5);
+  const vec4 beatColor = vec4(0.5,0.5,0.5, 0.5);
   const vec4 barColor = vec4(0.5,0.5,0.5, 0.6);
   const vec4 bar4Color = vec4(0.6,0.6,0.6, 0.7);
   const vec4 bar16Color = vec4(0.8,0.8,0.8, 0.8);
@@ -104,9 +96,9 @@ function getFragmentShader() {
   void main(void) {
     vec4 color = vec4(0.0);
     // float lineDist = line(textureCoordScreen.xy, lineStartScreen.xy, lineEndScreen.xy);
-    float lineDist = abs(textureCoordScreen.x - lineStartScreen.x);
+    float lineDist = abs(textureCoordScreen.x - lineXScreen);
 
-    float lineWidth = 0.5 * dpr;
+    float lineWidth = 0.35 * dpr;
 
     float durationOnScreen = duration / scale.x;
     float beatsOnSreen = durationOnScreen / timePerBeat;
@@ -116,22 +108,26 @@ function getFragmentShader() {
     if ((int(lineInfo.y) % (beatsPerBar * 16)) == 0) {
       pixelsPerLine *= 64.0;
       lineColor = bar16Color;
+      lineWidth = 0.8 * dpr;
     } else if ((int(lineInfo.y) % (beatsPerBar * 4)) == 0) {
       pixelsPerLine *= 16.0;
       lineColor = bar4Color;
+      lineWidth = 0.7 * dpr;
     } else if ((int(lineInfo.y) % beatsPerBar) == 0) {
       pixelsPerLine *= 4.0;
       lineColor = barColor;
+      lineWidth = 0.5 * dpr;
     } else {
       lineColor = beatColor;
     }
-    lineColor.a *= clamp(pow(pixelsPerLine,0.3) - 1.8, 0.0, 1.0);
+    lineColor.a *= clamp(pow(pixelsPerLine, 0.3) - 1.8, 0.0, 1.0)
+                 * pow(durationOnScreen, 0.1) / 3.0;
 
-    float hasLine = 1.0 - smoothstep(lineWidth, lineWidth + 1.5, lineDist);
+    float hasLine = 1.0 - smoothstep(lineWidth, lineWidth + 4.0 * dpr, lineDist);
 
     color = hasLine * lineColor;
  
-    fragColor = vec4(pow(color.rgb,vec3(1.0/2.2)),color.a);
+    fragColor = color; //vec4(pow(color.rgb,vec3(1.0/2.2)),color.a);
   }
   `
 }

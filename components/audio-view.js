@@ -251,7 +251,7 @@ export class AudioView {
     this.levelOfDetail = 2.7;
     this.rekordBoxColors = false;
 
-    this.showBeats = true;
+    this.showBeats = false;
   }
 
   /**
