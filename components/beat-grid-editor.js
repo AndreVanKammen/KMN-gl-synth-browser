@@ -88,15 +88,17 @@ function getFragmentShader() {
   in vec2 textureCoordScreen;
   out vec4 fragColor;
 
-  const vec4 beatColor = vec4(0.5,0.5,0.5, 0.5);
-  const vec4 barColor = vec4(0.5,0.5,0.5, 0.6);
-  const vec4 bar4Color = vec4(0.6,0.6,0.6, 0.7);
-  const vec4 bar16Color = vec4(0.8,0.8,0.8, 0.8);
+  const vec4 beatColor = vec4(0.5,0.5,0.5, 0.7);
+  const vec4 barColor = vec4(0.6,0.6,0.6, 0.8);
+  const vec4 bar4Color = vec4(0.7,0.7,0.7, 0.85);
+  const vec4 bar16Color = vec4(0.8,0.8,0.8, 0.9);
 
   void main(void) {
     vec4 color = vec4(0.0);
     // float lineDist = line(textureCoordScreen.xy, lineStartScreen.xy, lineEndScreen.xy);
     float lineDist = abs(textureCoordScreen.x - lineXScreen);
+    float halfHeight = windowSize.y * 0.5;
+    float barDist = halfHeight * 0.9 - abs(halfHeight-textureCoordScreen.y);
 
     float lineWidth = 0.35 * dpr;
 
@@ -105,18 +107,21 @@ function getFragmentShader() {
     float pixelsPerLine = windowSize.x / beatsOnSreen;
 
     vec4 lineColor = beatColor;
-    if ((int(lineInfo.y) % (beatsPerBar * 16)) == 0) {
+    if ((int(lineInfo.y) % (beatsPerBar * 16)) == 0 && barDist < 0.1) {
       pixelsPerLine *= 64.0;
       lineColor = bar16Color;
       lineWidth = 0.8 * dpr;
-    } else if ((int(lineInfo.y) % (beatsPerBar * 4)) == 0) {
+      lineDist = max(lineDist,barDist);
+    } else if ((int(lineInfo.y) % (beatsPerBar * 4)) == 0 && barDist < 0.1) {
       pixelsPerLine *= 16.0;
       lineColor = bar4Color;
       lineWidth = 0.7 * dpr;
-    } else if ((int(lineInfo.y) % beatsPerBar) == 0) {
+      lineDist = max(lineDist,barDist);
+    } else if ((int(lineInfo.y) % beatsPerBar == 0 && barDist < 0.1)) {
       pixelsPerLine *= 4.0;
       lineColor = barColor;
       lineWidth = 0.5 * dpr;
+      lineDist = max(lineDist,barDist);
     } else {
       lineColor = beatColor;
     }
@@ -196,7 +201,7 @@ export class BeatGridEditor {
   updateLines(skipUpdate = false) {
     const gl = this.gl;
     // TODO size is multiple check for more then 1000 points
-    const data = this.pointData = new Float32Array(4096);//this.points.length * 4.0);
+    const data = this.pointData = new Float32Array(Math.ceil(this.lines.length * 4.0 / 4096) * 4096);
     let ofs = 0;
     for (const line of this.lines) {
       data[ofs++] = (line.time / this.duration) * 2.0 - 1.0;

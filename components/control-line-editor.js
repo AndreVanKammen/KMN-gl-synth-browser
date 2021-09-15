@@ -177,7 +177,7 @@ export class ControlLineEditor {
       maxXScale: 1000.0
     });
 
-    // this.control.addHandler(this);
+    this.control.addHandler(this);
 
     this.udatePoints( [
         {time:0.0, value: 0.7}, 
@@ -238,7 +238,12 @@ export class ControlLineEditor {
     if (this.selectedLineIx !== -1) {
       // Done in mouse down now
       // this.createNewPoint(x,y);
-      this.lastClickTime = undefined;
+      let newClickTime = performance.now();
+      if (this.lastClickTime && ((newClickTime - this.lastClickTime) < 400)) {
+        this.createNewPoint(x, y);
+        // this.updatePointData();
+      }
+      this.lastClickTime = newClickTime;
     } else if (this.selectedPointIx !== -1) {
       let newClickTime = performance.now();
       if (this.lastClickTime && ((newClickTime - this.lastClickTime) < 400)) {
@@ -289,7 +294,6 @@ export class ControlLineEditor {
   }
   handleMove(x,y) {
     if (this.mouseDownOnPoint) {
-      console.log('.');
       let dx = this.mouseDownOnPoint.x - x;
       let dy = this.mouseDownOnPoint.y - y;
       if (!this.control.event.ctrlKey && this.selectedLineIx !== -1) {
