@@ -60,19 +60,15 @@ function getFragmentShader() {
 
     vec4 left = texelFetch(analyzeTexturesLeft,  point, 0);
     vec4 right = texelFetch(analyzeTexturesRight,  point, 0);
-    vec4 result = mix(left, right, smoothstep(0.49,0.51,y));
+    vec4 result = mix(left, right, step(0.5,y));
 
-    // Substract average from RMS? No to unpredictable, gives new errors!
-    // if (removeAvgFromRMS) {
-    //   result.x -= result.y * result.y;
-    // }
     result.xz = sqrt(result.xz);
     
-    return clamp(result.wxz,0.0,100.0);
+    return result.wxz;
   }
 
   vec3 getDataIX1(float ix_in, float y, int LODLevel) {
-
+    ix_in += .5;
     int len = int(ceil(pow(0.5,float(LODLevel)) * float(duration)));
     int divider = int(pow(2.0, float(LODLevel)));
     int LODOffset = LODOffsets[LODLevel];
@@ -83,72 +79,26 @@ function getFragmentShader() {
       return vec3(0.0);
     }
 
-    vec3 low = getDataIX0(int(floor(ix)),y,LODLevel);
-    vec3 high = getDataIX0(int(ceil(ix)),y,LODLevel);
+    vec3 low = getDataIX0(int(floor(ix)), y, LODLevel);
+    vec3 high = getDataIX0(int(ceil(ix)), y, LODLevel);
 
-    // return mix(low,high,(1.0+sin((fract(ix) * 2.0 - 1.0) * pi * 0.5))*0.5)
-    return mix(low,high,fract(ix));
+    return low;//mix(low,high,fract(ix));
   }
 
   vec3 getDataIX(float ix_in, float y,float LODLevel) {
-    // vec3 result = vec3(0.0);
-    // float weight = 0.0;
-    // for (int ix = 0; ix <= ceil(LODLevel); ix++) {
-    //   // float w = 1.0 / pow(2.0,float(ix));
-    //   float w = pow(1.5,float(ix));
-    //   weight += w;
-    //   result += getDataIX1(ix_in, y, ix) * w;
-    // }
-    // return result / weight;
+    LODLevel = 0.0;
     vec3 low = getDataIX1(ix_in, y, int(floor(LODLevel)));
     vec3 high = getDataIX1(ix_in, y, int(ceil(LODLevel)));
-    return mix(low,high,fract(LODLevel)); // (1.0+sin((fract(LODLevel) * 2.0 - 1.0) * pi * 0.5))*0.5);
-  }
-/*
-  vec3 getDataIX2(int ix, float y) {
-    vec3 a = getDataIX1(ix - 1, y);
-    vec3 b = getDataIX1(ix, y);
-    vec3 c = getDataIX1(ix + 1, y);
-
-    return vec3(((a.x > b.x) == (c.x > b.x)) ? (a.x + c.x) * 0.5 : (a.x + b.x + c.x ) / 3.0,
-                ((a.y > b.y) == (c.y > b.y)) ? (a.y + c.y) * 0.5 : (a.y + b.y + c.y ) / 3.0,
-                ((a.z > b.z) == (c.z > b.z)) ? (a.z + c.z) * 0.5 : (a.z + b.z + c.z ) / 3.0);
+    return mix(low,high,fract(LODLevel));
   }
 
-  vec3 getDataIX(int ix, float y) {
-    vec3 a = getDataIX2(ix - 1, y);
-    vec3 b = getDataIX2(ix, y);
-    vec3 c = getDataIX2(ix + 1, y);
-
-    return vec3(((a.x > b.x) == (c.x > b.x)) ? (a.x + c.x) * 0.5 : b.x,
-                ((a.y > b.y) == (c.y > b.y)) ? (a.y + c.y) * 0.5 : b.y,
-                ((a.z > b.z) == (c.z > b.z)) ? (a.z + c.z) * 0.5 : b.z);
-  }
-*/
   vec3 mixDataIX(float ix, float y) {
     int startIx = int(floor(ix));
     int stopIx = int(ceil(ix));
     
     float fragmentsPerPixel = float(duration) / (scale.x * float(windowSize.x));
     vec3 result = getDataIX(ix,y, clamp(log2(0.5+fragmentsPerPixel*(1.0+LODLevel)),0.01,float(${levelsOfDetail})));
-    // if (fragmentsPerPixel < 1.0)  {
-      // vec3 data1 = getDataIX(startIx,y);
-      // vec3 data2 = getDataIX(stopIx,y);
-    // result = mix(data1,data2,(1.0+sin((fract(ix) * 2.0 - 1.0) * pi * 0.5))*0.5);
-    // } else {
-    //   startIx -= int(fragmentsPerPixel * 0.55);
-    //   stopIx += int(fragmentsPerPixel * 0.55);
-    //   // Sum all values for the whole period
-    //   float weight = 0.0;
-    //   float length = float(stopIx - startIx + 1);
-    //   for (int ix2 = startIx; ix2 <= stopIx; ix2++) {
-    //     // result = max(result,getDataIX(ix2,y));
-    //     float w = 1.0;// - cos((float(ix2) + fract(ix)) / length * pi * 2.0);
-    //     weight += w;
-    //     result += getDataIX(ix2,y) * w;
-    //   }
-    //   result = result / weight; // float(stopIx - startIx + 1);
-    // }
+
     result = result / preScale;
     vec3 resultDB = clamp(
       (dBRange + (20.0 * log10 * log(0.000001 + result) )) / dBRange,
@@ -168,17 +118,10 @@ function getFragmentShader() {
 
     float readOffset = float(offset) + delta;
     float playDistance = (delta - playPos) / 5000.0 * pow(scale.x, 1.2);
-    // if (abs(playDistance) <= pi * 0.5) {
-    //   readOffset += -sin(playDistance*0.25) * 14.0;
-    // }
     
     vec3 data1 = mixDataIX(readOffset,textureCoord.y);
     vec4 beatData = getBeatData(int(round(readOffset)));
     float pxy = textureCoord.y / float(windowSize.y);
-
-    // if (abs(playDistance) <= pi * 0.5) {
-    //   data1 *= 1.0 + 0.5 * cos(playDistance);
-    // }
 
     vec3 dist = clamp(data1*0.8,0.0,1.0);
     dist = smoothstep(
@@ -188,7 +131,7 @@ function getFragmentShader() {
     vec3 clr = 1.0 - dist;
     clr.r = max(clr.r - clr.b * clr.b * 0.2, 0.0);
     clr.g = max(clr.g - clr.b * clr.b * 0.15, 0.0) * 0.8;
-    // beatData.rgb *= 0.0;
+
     if (!showBeats || textureCoord.y>0.1) {
       beatData.rgb *= 0.0;
     } else {
@@ -208,8 +151,7 @@ function getFragmentShader() {
       beatData.rgb += (1.0-pow(smoothstep(-0.0,2.0,abs(playDistance)),0.15)) * 14.0;
     }
     beatData.rgb *= 1.0-0.8 * smoothstep(0.0,0.2,clr);
-
-
+    
     if (rekordBoxColors) {
       vec3 d = clr;
       clr = d.r * vec3(0            ,  83.0 / 255.0, 225.0 / 255.0);
@@ -274,36 +216,32 @@ export class AudioView {
   /**
    * @param {WebGLSynth} webglSynth 
    */
-   setSynth(webglSynth) {
+  setSynth(webglSynth) {
     this.webglSynth = webglSynth;
     const gl = this.gl = webglSynth.gl;
 
     // Create two triangles to form a square that covers the whole canvas
     const basic2triangles = [
       -1, -1,
-       1, -1,
-      -1,  1,
-       1,  1,
-       1, -1 ];
+      1, -1,
+      -1, 1,
+      1, 1,
+      1, -1];
     this.vertexBuffer = gl.updateOrCreateFloatArray(0, basic2triangles);
-    this.shader = gl.getShaderProgram(
-      getVertexShader(), 
-      this.webglSynth.getDefaultDefines()+
-      getFragmentShader(),
-      2);
+    gl.checkUpdateShader(this, getVertexShader(), this.webglSynth.getDefaultDefines() + getFragmentShader());
 
     if (!this.options.noRequestAnimationFrame) {
       animationFrame(this.updateCanvasBound);
     }
 
-    this.viewTexture0 = { bufferWidth:this.webglSynth.bufferWidth };
+    this.viewTexture0 = { bufferWidth: this.webglSynth.bufferWidth };
     this.viewTexture1 = { bufferWidth: this.webglSynth.bufferWidth };
     this.beatBuffer = { bufferWidth: this.webglSynth.bufferWidth };
   }
 
   updateCanvas() {
     let gl = this.gl;
-    let shader = this.shader;
+    let shader = gl.checkUpdateShader(this, getVertexShader(), this.webglSynth.getDefaultDefines() + getFragmentShader());
 
     if (gl && shader && this.parentElement && this.viewTexture0.texture) {
       

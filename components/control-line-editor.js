@@ -17,6 +17,8 @@ function getVertexShader() {
     uniform vec2 position;
     uniform vec2 windowSize;
 
+    uniform float duration;
+
     flat out vec4 lineStart;
     flat out vec4 lineEnd;
 
@@ -33,12 +35,16 @@ function getVertexShader() {
       pointIx++;
       lineEnd = texelFetch(pointDataTexture, ivec2(pointIx % 1024, pointIx / 1024), 0);
       
+      float durationOnScreen = duration / scale.x;
+      // TODO: why is this of by a factor of 50? dpr needs to be in there
+      float pixelsSize = durationOnScreen / windowSize.x / 50.0;
+
       int subPointIx = gl_VertexID % 6;
       vec2 pos;
       if (subPointIx == 1 || subPointIx >= 4) {
-        pos.x = lineStart.x - 0.1;
+        pos.x = lineStart.x - pixelsSize;
       } else {
-        pos.x = lineEnd.x + 0.1;
+        pos.x = lineEnd.x + pixelsSize;
       }
 
       if (subPointIx <= 1 || subPointIx == 4) {
@@ -103,19 +109,19 @@ function getFragmentShader() {
             // min(distance(textureCoordScreen.xy, lineEndScreen.xy  ),
                 distance(textureCoordScreen.xy, lineStartScreen.xy);
 
-    vec3 pointColor = vec3(0.19,0.19,0.9);
+    vec3 pointColor = vec3(0.19,0.19,0.19);
     float pointBorderWidth = 0.25 * dpr;
-    float lineWidth = 0.5 * dpr;
-    float pointWidth = 6.0 * dpr;
+    float lineWidth = 0.25 * dpr;
+    float pointWidth = 4.0 * dpr;
     if (lineStart.z > 0.0) {
-      pointWidth = 10.0 * dpr;
+      pointWidth = 10.0 * dpr;  
     }
 
     float hasPointBorder = 1.0 - smoothstep(pointBorderWidth, pointBorderWidth + 1.25, abs(pointDist - pointWidth));
     float hasPoint = 1.0 - smoothstep(pointWidth, pointWidth + 1.5, pointDist);
 
     if (lineStart.w > 0.0) {
-      lineWidth = 2.0 * dpr;
+      lineWidth = 0.75 * dpr;
       if (lineStart.w < 1.0) {
         vec2 newPointPos = mix(lineStartScreen, lineEndScreen, lineStart.w);
         vec2 newPointDelta = abs(textureCoordScreen - newPointPos);
@@ -133,7 +139,7 @@ function getFragmentShader() {
       }
     }
 
-    float hasLine = 1.0 - smoothstep(lineWidth, lineWidth + 1.5, lineDist);
+    float hasLine = 1.0 - pow(smoothstep(lineWidth, lineWidth + 1.5*dpr, lineDist),.5);
 
     hasLine = max(hasLine - hasPoint, 0.0);
     hasPoint = max(hasPoint - hasPointBorder, 0.0);
@@ -146,7 +152,7 @@ function getFragmentShader() {
     if (color.a > 0.001) {
       color.rgb = min(color.rgb / (color.a + 0.01), 1.0);
     }
-    fragColor = pow(color,vec4(1.0/2.2));
+    fragColor = pow(color.rgba,vec4(1.0/2.2));
   }
   `
 }
@@ -184,11 +190,7 @@ export class ControlLineEditor {
         {time:1.0, value: 0.7}
       ], 1.0);
 
-
-    this.shader = gl.getShaderProgram(
-      getVertexShader(), 
-      getFragmentShader(),
-      2);
+    this.shader = gl.checkUpdateShader(this, getVertexShader(), getFragmentShader());
 
     if (!this.options.noRequestAnimationFrame) {
       animationFrame(this.updateCanvasBound);
@@ -209,7 +211,7 @@ export class ControlLineEditor {
   updatePointData(skipUpdate = false) {
     const gl = this.gl;
     // TODO size is multiple check for more then 1000 points
-    const data = this.pointData = new Float32Array(4096);//this.points.length * 4.0);
+    const data = this.pointData = new Float32Array(Math.ceil(this.points.length * 4.0 / 4096) * 4096);
     let ofs = 0;
     for (const point of this.points) {
       data[ofs++] = (point.time / this.duration) * 2.0 - 1.0;
@@ -336,11 +338,11 @@ export class ControlLineEditor {
   
         this.updatePointData(true);
         this.pointData[this.selectedPointIx * 4 + 2] = 1.0;
+        this.pointInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.pointData, this.pointInfo);
       }
     } else {
       this.updateSelect(x,y);
     }
-    this.pointInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.pointData, this.pointInfo);
     return false;
   }
   handleUp(x,y) {
@@ -414,6 +416,7 @@ export class ControlLineEditor {
 
   updateCanvas() {
     let gl = this.gl;
+    this.shader = gl.checkUpdateShader(this, getVertexShader(), getFragmentShader());
     let shader = this.shader;
 
     if (gl && shader && this.parentElement && this.points?.length > 0) {
@@ -442,6 +445,7 @@ export class ControlLineEditor {
         shader.u.scale?.set(this.control.xScaleSmooth, this.control.yScaleSmooth);
         shader.u.position?.set(this.control.xOffsetSmooth, this.control.yOffsetSmooth);
         shader.u.dpr?.set(dpr);
+        shader.u.duration?.set(this.duration);
 
         gl.drawArrays(gl.TRIANGLES, 0, (this.points.length-1) * 6.0 );
       }
