@@ -68,7 +68,7 @@ function getFragmentShader() {
   }
 
   vec3 getDataIX1(float ix_in, float y, int LODLevel) {
-    ix_in += .5;
+    ix_in -= .5;
     int len = int(ceil(pow(0.5,float(LODLevel)) * float(duration)));
     int divider = int(pow(2.0, float(LODLevel)));
     int LODOffset = LODOffsets[LODLevel];
@@ -82,11 +82,11 @@ function getFragmentShader() {
     vec3 low = getDataIX0(int(floor(ix)), y, LODLevel);
     vec3 high = getDataIX0(int(ceil(ix)), y, LODLevel);
 
-    return low;//mix(low,high,fract(ix));
+    return mix(low,high,fract(ix));
   }
 
   vec3 getDataIX(float ix_in, float y,float LODLevel) {
-    LODLevel = 0.0;
+    // LODLevel = 0.0;
     vec3 low = getDataIX1(ix_in, y, int(floor(LODLevel)));
     vec3 high = getDataIX1(ix_in, y, int(ceil(LODLevel)));
     return mix(low,high,fract(LODLevel));
@@ -123,7 +123,7 @@ function getFragmentShader() {
     vec4 beatData = getBeatData(int(round(readOffset)));
     float pxy = textureCoord.y / float(windowSize.y);
 
-    vec3 dist = clamp(data1*0.8,0.0,1.0);
+    vec3 dist = clamp(data1,0.0,1.0);
     dist = smoothstep(
       dist - vec3(pxy),
       dist + vec3(pxy), 
@@ -374,7 +374,7 @@ export class AudioView {
       leftTex: this.viewTexture0.texture,
       rightTex: this.viewTexture1.texture
     }
-    this.dataOffset = 16; // TODO: analyze starts 16 to early see analyze-loader 2 buffers extra problem
+    // this.dataOffset = 16; // TODO: analyze starts 16 to early see analyze-loader 2 buffers extra problem
     this.dataLength = ~~(sourceLen/4);
   }
 

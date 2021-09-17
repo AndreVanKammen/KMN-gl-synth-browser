@@ -31,16 +31,15 @@ function getVertexShader() {
 
       lineInfo = texelFetch(pointDataTexture, ivec2(pointIx % 1024, pointIx / 1024), 0);
 
-      float durationOnScreen = duration / scale.x;
-      // TODO: why is this of by a factor of 50? dpr needs to be in there
-      float pixelsSize = durationOnScreen / windowSize.x / 50.0;
+      vec2 pixelSize = vec2(2.0) / scale / windowSize * dpr;
+      pixelSize *= 2.0; // Maximum line width + aliasing
         
       int subPointIx = gl_VertexID % 6;
       vec2 pos;
       if (subPointIx == 1 || subPointIx >= 4) {
-        pos.x = lineInfo.x - pixelsSize;
+        pos.x = lineInfo.x - pixelSize.x;
       } else {
-        pos.x = lineInfo.x + pixelsSize;
+        pos.x = lineInfo.x + pixelSize.x;
       }
 
       if (subPointIx <= 1 || subPointIx == 4) {
@@ -100,7 +99,7 @@ function getFragmentShader() {
     float halfHeight = windowSize.y * 0.5;
     float barDist = halfHeight * 0.9 - abs(halfHeight-textureCoordScreen.y);
 
-    float lineWidth = 0.35 * dpr;
+    float lineWidth = 0.15 * dpr;
 
     float durationOnScreen = duration / scale.x;
     float beatsOnSreen = durationOnScreen / timePerBeat;
@@ -110,17 +109,17 @@ function getFragmentShader() {
     if ((int(lineInfo.y) % (beatsPerBar * 16)) == 0 && barDist < 0.1) {
       pixelsPerLine *= 64.0;
       lineColor = bar16Color;
-      lineWidth = 0.8 * dpr;
+      lineWidth = 0.5 * dpr;
       lineDist = max(lineDist,barDist);
     } else if ((int(lineInfo.y) % (beatsPerBar * 4)) == 0 && barDist < 0.1) {
       pixelsPerLine *= 16.0;
       lineColor = bar4Color;
-      lineWidth = 0.7 * dpr;
+      lineWidth = 0.4 * dpr;
       lineDist = max(lineDist,barDist);
     } else if ((int(lineInfo.y) % beatsPerBar == 0 && barDist < 0.1)) {
       pixelsPerLine *= 4.0;
       lineColor = barColor;
-      lineWidth = 0.5 * dpr;
+      lineWidth = 0.3 * dpr;
       lineDist = max(lineDist,barDist);
     } else {
       lineColor = beatColor;
@@ -128,7 +127,7 @@ function getFragmentShader() {
     lineColor.a *= clamp(pow(pixelsPerLine, 0.3) - 1.8, 0.0, 1.0)
                  * pow(durationOnScreen, 0.1) / 3.0;
 
-    float hasLine = 1.0 - smoothstep(lineWidth, lineWidth + 4.0 * dpr, lineDist);
+    float hasLine = 1.0 - smoothstep(lineWidth, lineWidth + 1.5*dpr, lineDist);
 
     color = hasLine * lineColor;
  
@@ -176,10 +175,7 @@ export class BeatGridEditor {
         {time:4.0, beatNr: 5.0}
       ], 1.0, 10.0);
 
-    this.shader = gl.getShaderProgram(
-      getVertexShader(), 
-      getFragmentShader(),
-      2);
+    this.shader = gl.checkUpdateShader(this, getVertexShader(), getFragmentShader());
 
     if (!this.options.noRequestAnimationFrame) {
       animationFrame(this.updateCanvasBound);
@@ -323,6 +319,7 @@ export class BeatGridEditor {
 
   updateCanvas() {
     let gl = this.gl;
+    this.shader = gl.checkUpdateShader(this, getVertexShader(), getFragmentShader());
     let shader = this.shader;
 
     if (gl && shader && this.parentElement && this.lines?.length > 0) {
