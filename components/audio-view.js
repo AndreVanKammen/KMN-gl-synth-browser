@@ -8,11 +8,18 @@ function getVertexShader() {
   return /*glsl*/`
     in vec2 vertexPosition;
     out vec2 textureCoord;
+    flat out float fragmentsPerPixel;
+    
+    uniform int duration;
     uniform vec2 scale;
     uniform vec2 position;
+    uniform vec2 windowSize;
+    uniform float dpr;
+
     void main(void) {
       vec2 pos = vertexPosition.xy;
       textureCoord = (0.5 + 0.5 * pos) / scale + position;
+      fragmentsPerPixel = float(duration) / (scale.x * windowSize.x);
       gl_Position = vec4(pos, 0.0, 1.0);
     }`
 }
@@ -27,6 +34,7 @@ function getFragmentShader() {
   const float pi = 3.141592653589793;
 
   in vec2 textureCoord;
+  flat in float fragmentsPerPixel;
   out vec4 fragColor;
 
   uniform vec2 scale;
@@ -35,7 +43,7 @@ function getFragmentShader() {
   uniform int duration;
   uniform float playPos;
 
-  uniform ivec2 windowSize;
+  uniform vec2 windowSize;
 
   uniform int[${levelsOfDetail}] LODOffsets;
   uniform float LODLevel;
@@ -55,20 +63,24 @@ function getFragmentShader() {
 
   const float log10 = 1.0 / log(10.0);
 
-  vec3 getDataIX0(int ix, float y, int LODLevel) {
+  vec3 getDataIX0(int ix, int LODLevel) {
     ivec2 point = ivec2(ix % bufferWidth, ix / bufferWidth);
 
-    vec4 left = texelFetch(analyzeTexturesLeft,  point, 0);
-    vec4 right = texelFetch(analyzeTexturesRight,  point, 0);
-    vec4 result = mix(left, right, step(0.5,y));
+    vec4 result = (textureCoord.y < 0.5)
+                ? texelFetch(analyzeTexturesLeft,  point, 0)
+                : texelFetch(analyzeTexturesRight,  point, 0);
 
     result.xz = sqrt(result.xz);
     
     return result.wxz;
   }
 
-  vec3 getDataIX1(float ix_in, float y, int LODLevel) {
-    ix_in -= .5;
+  vec3 getDataIX1(float ix_in, int LODLevel) {
+    if (fragmentsPerPixel<=0.03) {
+      ix_in += .1;
+    } else {
+      ix_in -= .4;
+    }
     int len = int(ceil(pow(0.5,float(LODLevel)) * float(duration)));
     int divider = int(pow(2.0, float(LODLevel)));
     int LODOffset = LODOffsets[LODLevel];
@@ -79,32 +91,34 @@ function getFragmentShader() {
       return vec3(0.0);
     }
 
-    vec3 low = getDataIX0(int(floor(ix)), y, LODLevel);
-    vec3 high = getDataIX0(int(ceil(ix)), y, LODLevel);
-
-    return mix(low,high,fract(ix));
+    vec3 low = getDataIX0(int(floor(ix)), LODLevel);
+    vec3 high = getDataIX0(int(ceil(ix)), LODLevel);
+     
+    return mix(low,high,fract(ix * float(fragmentsPerPixel>0.03)));
   }
 
-  vec3 getDataIX(float ix_in, float y,float LODLevel) {
+  vec3 getDataIX(float ix_in, float LODLevel) {
     // LODLevel = 0.0;
-    vec3 low = getDataIX1(ix_in, y, int(floor(LODLevel)));
-    vec3 high = getDataIX1(ix_in, y, int(ceil(LODLevel)));
+    vec3 low = getDataIX1(ix_in, int(floor(LODLevel)));
+    vec3 high = getDataIX1(ix_in, int(ceil(LODLevel)));
     return mix(low,high,fract(LODLevel));
   }
 
-  vec3 mixDataIX(float ix, float y) {
+  vec3 mixDataIX(float ix) {
     int startIx = int(floor(ix));
     int stopIx = int(ceil(ix));
     
-    float fragmentsPerPixel = float(duration) / (scale.x * float(windowSize.x));
-    vec3 result = getDataIX(ix,y, clamp(log2(0.5+fragmentsPerPixel*(1.0+LODLevel)),0.01,float(${levelsOfDetail})));
-
-    result = result / preScale;
-    vec3 resultDB = clamp(
-      (dBRange + (20.0 * log10 * log(0.000001 + result) )) / dBRange,
-       0.0, 1.0);
-    result = mix(result, resultDB, linearDbMix);
-    result = pow(result,quadraticCurve);
+    vec3 result = getDataIX(ix, clamp(log2(0.5+fragmentsPerPixel*(1.0+LODLevel)),0.01,float(${levelsOfDetail})));
+    if (fragmentsPerPixel<=0.03) {
+      result *= vec3(1.0,0.0,0.0);
+    } else {
+      result = result / preScale;
+      vec3 resultDB = clamp(
+        (dBRange + (20.0 * log10 * log(0.000001 + result) )) / dBRange,
+         0.0, 1.0);
+      result = mix(result, resultDB, linearDbMix);
+      result = pow(result,quadraticCurve);
+    }
     return result;
   }
 
@@ -119,7 +133,8 @@ function getFragmentShader() {
     float readOffset = float(offset) + delta;
     float playDistance = (delta - playPos) / 5000.0 * pow(scale.x, 1.2);
     
-    vec3 data1 = mixDataIX(readOffset,textureCoord.y);
+    float fragmentsPerPixel = float(duration) / (scale.x * float(windowSize.x));
+    vec3 data1 = mixDataIX(readOffset);
     vec4 beatData = getBeatData(int(round(readOffset)));
     float pxy = textureCoord.y / float(windowSize.y);
 
@@ -262,6 +277,7 @@ export class AudioView {
         shader.u.offset?.set(this.dataOffset); // this.webglSynth.processCount);s
         shader.u.duration?.set(this.dataLength);
         shader.u.windowSize?.set(w, h);
+        shader.u.dpr?.set(dpr);
         shader.u.scale?.set(this.control.xScaleSmooth, this.control.yScaleSmooth);
         shader.u.position?.set(this.control.xOffsetSmooth, this.control.yOffsetSmooth);
 

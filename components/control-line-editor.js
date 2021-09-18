@@ -11,117 +11,6 @@ function getVertexShader() {
   return /*glsl*/`precision highp float;
     precision highp float;
     precision highp int;
-
-    in vec2 vertexPosition;
-
-    uniform sampler2D pointDataTexture;
-
-    uniform vec2 scale;
-    uniform vec2 position;
-    uniform vec2 windowSize;
-
-    uniform float dpr;
-    uniform float duration;
-
-    flat out vec4 lineStart;
-    flat out vec4 lineEnd;
-
-    flat out vec2 lineStartScreen;
-    flat out vec2 lineEndScreen;
-
-    out vec2 textureCoord;
-    out vec2 textureCoordScreen;
-
-    void main(void) {
-      int pointIx = gl_VertexID / 6;
-
-      lineStart = texelFetch(pointDataTexture, ivec2(pointIx % 1024, pointIx / 1024), 0);
-      pointIx++;
-      lineEnd = texelFetch(pointDataTexture, ivec2(pointIx % 1024, pointIx / 1024), 0);
-      
-      vec2 pixelSize = vec2(2.0) / scale / windowSize * dpr;
-
-      int subPointIx = gl_VertexID % 6;
-      vec2 pos;
-      if (subPointIx == 1 || subPointIx >= 4) {
-        pos.x = lineStart.x - pixelSize.x;
-      } else {
-        pos.x = lineEnd.x + pixelSize.x;
-      }
-
-      if (subPointIx <= 1 || subPointIx == 4) {
-        pos.y = min(lineStart.y, lineEnd.y) - pixelSize.y;
-      } else {
-        pos.y = max(lineStart.y, lineEnd.y) + pixelSize.y;
-      }
-
-
-      lineStartScreen = lineStart.xy;
-      lineEndScreen = lineEnd.xy;
-
-      textureCoord = pos;
-      pos = (pos - position * 2.0 + 1.0) * scale - 1.0;
-      lineStartScreen = (lineStartScreen - position * 2.0 + 1.0) * scale - 1.0;
-      lineEndScreen = (lineEndScreen - position * 2.0 + 1.0) * scale - 1.0;
-
-      lineStartScreen = (lineStartScreen + 1.0) * 0.5 * windowSize;
-      lineEndScreen = (lineEndScreen + 1.0) * 0.5 * windowSize;
-      textureCoordScreen = (pos + 1.0) * 0.5 * windowSize;
-
-      gl_Position = vec4(pos, 0.0, 1.0);
-    }`
-}
-
-  // The shader that calculates the pixel values for the filled triangles
-function getFragmentShader() {
-  return /*glsl*/`precision highp float;
-  precision highp float;
-  precision highp int;
-  precision highp sampler2DArray;
-
-  const float pi = 3.141592653589793;
-
-  uniform vec2 windowSize;
-  uniform float dpr;
-
-  flat in vec4 lineStart;
-  flat in vec4 lineEnd;
-
-  flat in vec2 lineStartScreen;
-  flat in vec2 lineEndScreen;
-
-  in vec2 textureCoord;
-  in vec2 textureCoordScreen;
-  out vec4 fragColor;
-
-  float line(vec2 p, vec2 a, vec2 b)
-  {
-    vec2 pa = p - a;
-    vec2 ba = b - a;
-    float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
-    return length(pa - ba * h);
-  }
-
-  const vec3 pointBorderColor = vec3(0.8);
-  const vec4 lineColor = vec4(1.0,1.0,1.0,0.1);
-
-  void main(void) {
-    vec4 color = vec4(0.0);
-
-    float lineDist = line(textureCoordScreen.xy, lineStartScreen.xy, lineEndScreen.xy);
-    float lineWidth = 0.25 * dpr;
-    float hasLine = 1.0 - smoothstep(lineWidth, lineWidth + 1.5 * dpr, lineDist);
-
-    color = hasLine * lineColor;
-    fragColor = pow(color.rgba,vec4(1.0/2.2));
-  }
-  `
-}
-
-function getVertexShader2() {
-  return /*glsl*/`precision highp float;
-    precision highp float;
-    precision highp int;
     
     #define pointSize 10.0
     in vec2 vertexPosition;
@@ -184,7 +73,7 @@ function getVertexShader2() {
 }
 
   // The shader that calculates the pixel values for the filled triangles
-function getFragmentShader2() {
+function getFragmentShader() {
   return /*glsl*/`precision highp float;
   precision highp float;
   precision highp int;
@@ -297,11 +186,13 @@ export class ControlLineEditor {
       maxXScale: 1000.0
     });
 
-    // this.control.addHandler(this);
+    this.control.addHandler(this);
 
     this.udatePoints( [
-        {time:0.0, value: 0.7}, 
-        {time:1.0, value: 0.7}
+        {time:0.0, value: 0.0}, 
+        {time:0.0, value: 5/7},
+        {time:1.0, value: 5/7}, 
+        {time:1.0, value: 0.0} 
       ], 1.0);
 
     this.shader = gl.checkUpdateShader(this, getVertexShader(), getFragmentShader());
@@ -452,11 +343,11 @@ export class ControlLineEditor {
   
         this.updatePointData(true);
         this.pointData[this.selectedPointIx * 4 + 2] = 1.0;
-        this.pointInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.pointData, this.pointInfo);
       }
     } else {
       this.updateSelect(x,y);
     }
+    this.pointInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.pointData, this.pointInfo);
     return false;
   }
   handleUp(x,y) {
