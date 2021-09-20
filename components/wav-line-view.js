@@ -156,18 +156,26 @@ export class WavLineView {
   }
 
   udatePoints() {
+    this.duration = this.leftSamples.length / this.sampleRate;
+    let durationOnScreen = (this.duration / this.control.xScaleSmooth);
+    let screenStartTime = this.control.xOffsetSmooth * this.duration;
+    if (screenStartTime > this.startTime &&
+      screenStartTime + durationOnScreen < this.endTime) {
+      // No need for update
+      return;
+    }
 
     let points = this.points = [];
     let wavLeft = this.leftSamples;
     let wavRight = this.rightSamples;
 
-    this.duration = this.leftSamples.length / this.sampleRate;
     this.timeStep = 1.0 / this.sampleRate;
 
-    this.startTime = this.control.xOffsetSmooth * this.duration;
-
-    let startSample = ~~Math.round(this.startTime * this.sampleRate);
-    let sampleCount = ~~Math.ceil((this.duration / this.control.xScaleSmooth) * this.sampleRate);
+    let sampleCount = ~~Math.ceil(this.sampleRate / 6.0) * 2.0;
+    let startSample = ~~Math.round((screenStartTime + 0.5 * durationOnScreen) * this.sampleRate) - sampleCount / 2;
+    this.startTime = startSample / this.sampleRate;
+    this.endTime = (startSample+sampleCount) / this.sampleRate;
+    
     for (let ix = startSample; ix < startSample + sampleCount; ix++) {
       points.push(0.5* (wavLeft[ix] + wavRight[ix]));
     }
@@ -199,7 +207,7 @@ export class WavLineView {
     if (gl && shader && this.parentElement) {
       this.duration = this.leftSamples.length / this.sampleRate;
       let durationOnScreen = this.duration / this.control.xScale;
-      if (durationOnScreen < 0.5) {
+      if (durationOnScreen < 0.25) {
         this.udatePoints();
     
         let { w, h, dpr } = gl.updateCanvasSize(this.canvas);
@@ -230,7 +238,7 @@ export class WavLineView {
           shader.u.duration?.set(this.duration);
           shader.u.startTime?.set(this.startTime / this.duration * 2.0 - 1.0);
           shader.u.timeStep?.set(this.timeStep / this.duration * 2.0);
-          shader.u.lineAlpha?.set(1.0 - Math.pow(Math.max(0.0,durationOnScreen * 2.0-0.1),.2));
+          shader.u.lineAlpha?.set(1.0 - Math.pow(Math.max(0.0,durationOnScreen * 4.0-0.1),.2));
     
           gl.drawArrays(gl.TRIANGLES, 0, (this.points.length - 1) * 6.0);
           gl.blendEquationSeparate(gl.FUNC_ADD, gl.FUNC_ADD);

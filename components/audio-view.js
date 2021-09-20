@@ -65,16 +65,9 @@ function getFragmentShader() {
 
   vec3 getDataIX0(int ix, int LODLevel) {
     ivec2 point = ivec2(ix % bufferWidth, ix / bufferWidth);
-    if (ix>duration*2) {
-      return vec3(0.0);
-    }
-
     vec4 result = (textureCoord.y < 0.5) && (fragmentsPerPixel>0.03)
                 ? texelFetch(analyzeTexturesLeft,  point, 0)
                 : texelFetch(analyzeTexturesRight,  point, 0);
-
-    result.xz = sqrt(result.xz);
-    
     return result.wxz;
   }
 
@@ -112,9 +105,8 @@ function getFragmentShader() {
     int stopIx = int(ceil(ix));
     
     vec3 result = getDataIX(ix, clamp(log2(0.5+fragmentsPerPixel*(1.0+LODLevel)),0.01,float(${levelsOfDetail})));
-    if (fragmentsPerPixel<=0.03) {
-      result *= vec3(1.0,0.0,0.0);
-    } else {
+    result.yz = sqrt(result.yz);
+    if (fragmentsPerPixel>0.03) {
       result = result / preScale;
       vec3 resultDB = clamp(
         (dBRange + (20.0 * log10 * log(0.000001 + result) )) / dBRange,
@@ -180,6 +172,9 @@ function getFragmentShader() {
     } else {
       clr.r = max(0.0,clr.r-(clr.g+clr.b) * 0.2);
       clr.g = max(0.0,clr.g-clr.b * 0.4);
+    }
+    if (fragmentsPerPixel<=0.03) {
+      clr.rgb *= 0.75;
     }
 
     fragColor = vec4(clamp(pow(beatData.rgb / 12.0,vec3(2.0)) + clr.rgb, 0.0,1.0) ,1.0);

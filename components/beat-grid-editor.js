@@ -124,8 +124,8 @@ function getFragmentShader() {
     } else {
       lineColor = beatColor;
     }
-    lineColor.a *= clamp(pow(pixelsPerLine, 0.3) - 1.8, 0.0, 1.0)
-                 * pow(durationOnScreen, 0.1) / 3.0;
+    lineColor.a *= clamp(pow(pixelsPerLine, 0.3) - 1.8, 0.0, 1.0);
+                  // * pow(durationOnScreen, 0.1) / 3.0;
 
     float hasLine = 1.0 - smoothstep(lineWidth, lineWidth + 1.5*dpr, lineDist);
 
