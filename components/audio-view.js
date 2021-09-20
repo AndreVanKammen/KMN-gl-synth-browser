@@ -65,8 +65,11 @@ function getFragmentShader() {
 
   vec3 getDataIX0(int ix, int LODLevel) {
     ivec2 point = ivec2(ix % bufferWidth, ix / bufferWidth);
+    if (ix>duration*2) {
+      return vec3(0.0);
+    }
 
-    vec4 result = (textureCoord.y < 0.5)
+    vec4 result = (textureCoord.y < 0.5) && (fragmentsPerPixel>0.03)
                 ? texelFetch(analyzeTexturesLeft,  point, 0)
                 : texelFetch(analyzeTexturesRight,  point, 0);
 

@@ -18,6 +18,8 @@ function getVertexShader() {
 
     uniform float dpr;
     uniform float duration;
+    uniform float startTime;
+    uniform float timeStep;
 
     flat out vec4 lineStart;
     flat out vec4 lineEnd;
@@ -34,11 +36,15 @@ function getVertexShader() {
       lineStart = texelFetch(pointDataTexture, ivec2(pointIx % 1024, pointIx / 1024), 0);
       pointIx++;
       lineEnd = texelFetch(pointDataTexture, ivec2(pointIx % 1024, pointIx / 1024), 0);
+      float startX = startTime + float(pointIx) * timeStep;
       
       vec2 pixelSize = vec2(2.0) / scale / windowSize * dpr;
+      lineStart.x = startX;
+      lineEnd.x = startX + timeStep;
 
-      pixelSize *= 2.0;  // Line width
+      pixelSize *= 200.0;  // Line width
       int subPointIx = gl_VertexID % 6;
+
       vec2 pos;
       if (subPointIx == 1 || subPointIx >= 4) {
         pos.x = lineStart.x - pixelSize.x;
@@ -79,6 +85,7 @@ function getFragmentShader() {
 
   uniform vec2 windowSize;
   uniform float dpr;
+  uniform float lineAlpha;
 
   flat in vec4 lineStart;
   flat in vec4 lineEnd;
@@ -99,17 +106,16 @@ function getFragmentShader() {
   }
 
   const vec3 pointBorderColor = vec3(0.8);
-  const vec4 lineColor = vec4(1.0,1.0,1.0,0.8);
 
   void main(void) {
     vec4 color = vec4(0.0);
 
     float lineDist = line(textureCoordScreen.xy, lineStartScreen.xy, lineEndScreen.xy);
-    float lineWidth = 0.5 * dpr;
+    float lineWidth = 0.02 * dpr;
     float hasLine = 1.0 - smoothstep(lineWidth, lineWidth + 1.5 * dpr, lineDist);
 
-    color = hasLine * lineColor;
-    fragColor = pow(color.rgba,vec4(1.0/2.2));
+    color = hasLine * vec4(1.0,1.0,1.0,lineAlpha);
+    fragColor = vec4(pow(color.rgb,vec3(1.0/2.2)),color.a);
   }
   `
 }
@@ -120,6 +126,9 @@ export class WavLineView {
     this.width  = 10;
     this.height = 10;
     this.mouseDownOnPoint = null;
+    this.leftSamples = new Float32Array();
+    this.rightSamples = new Float32Array();
+    this.sampleRate = 44100;
   }
 
   /**
@@ -146,14 +155,23 @@ export class WavLineView {
     }
   }
 
-  udatePoints(points, duration) {
-    this.points = points;
-    this.duration = duration;
-    
-    this.minValue = 0.0;
-    this.maxValue = 1.0;
-    this.valueRange = this.maxValue - this.minValue;
+  udatePoints() {
 
+    let points = this.points = [];
+    let wavLeft = this.leftSamples;
+    let wavRight = this.rightSamples;
+
+    this.duration = this.leftSamples.length / this.sampleRate;
+    this.timeStep = 1.0 / this.sampleRate;
+
+    this.startTime = this.control.xOffsetSmooth * this.duration;
+
+    let startSample = ~~Math.round(this.startTime * this.sampleRate);
+    let sampleCount = ~~Math.ceil((this.duration / this.control.xScaleSmooth) * this.sampleRate);
+    for (let ix = startSample; ix < startSample + sampleCount; ix++) {
+      points.push(0.5* (wavLeft[ix] + wavRight[ix]));
+    }
+    
     this.updatePointData();
   }
 
@@ -163,8 +181,8 @@ export class WavLineView {
     const data = this.pointData = new Float32Array(Math.ceil(this.points.length * 4.0 / 4096) * 4096);
     let ofs = 0;
     for (const point of this.points) {
-      data[ofs++] = (point.time / this.duration) * 2.0 - 1.0;
-      data[ofs++] = (point.value - this.minValue) / this.valueRange * 2.0 - 1.0;
+      data[ofs++] = 0.0;
+      data[ofs++] = point;
       data[ofs++] = 0; // use for hover and stuff
       data[ofs++] = 0;
     }
@@ -177,36 +195,46 @@ export class WavLineView {
     let gl = this.gl;
     this.shader = gl.checkUpdateShader(this, getVertexShader(), getFragmentShader());
     let shader = this.shader;
+  
+    if (gl && shader && this.parentElement) {
+      this.duration = this.leftSamples.length / this.sampleRate;
+      let durationOnScreen = this.duration / this.control.xScale;
+      if (durationOnScreen < 0.5) {
+        this.udatePoints();
+    
+        let { w, h, dpr } = gl.updateCanvasSize(this.canvas);
+        // gl.blendEquationSeparate(gl.MAX, gl.FUNC_ADD);
 
-    if (gl && shader && this.parentElement && this.points?.length > 0) {
+        let rect = this.parentElement.getBoundingClientRect();
+        if (rect.width && rect.height) {
+          gl.viewport(rect.x * dpr, h - (rect.y + rect.height) * dpr, rect.width * dpr, rect.height * dpr);
+          this.width = w = rect.width * dpr;
+          this.height = h = rect.height * dpr;
 
-      let {w, h, dpr} = gl.updateCanvasSize(this.canvas);
+          // gl.lineWidth(3.0);
+          // Tell WebGL how to convert from clip space to pixels
+          gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+          gl.useProgram(shader);
 
-      let rect = this.parentElement.getBoundingClientRect();
-      if (rect.width && rect.height) {
-        gl.viewport(rect.x * dpr, h - (rect.y + rect.height) * dpr, rect.width * dpr, rect.height * dpr);
-        this.width  = w = rect.width * dpr;
-        this.height = h = rect.height * dpr;
+          if (shader.u.pointDataTexture) {
+            gl.activeTexture(gl.TEXTURE2);
+            gl.bindTexture(gl.TEXTURE_2D, this.pointInfo.texture);
+            gl.uniform1i(shader.u.pointDataTexture, 2);
+            gl.activeTexture(gl.TEXTURE0);
+          }
 
-        // gl.lineWidth(3.0);
-        // Tell WebGL how to convert from clip space to pixels
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        gl.useProgram(shader);
-
-        if (shader.u.pointDataTexture) {
-          gl.activeTexture(gl.TEXTURE2);
-          gl.bindTexture(gl.TEXTURE_2D, this.pointInfo.texture);
-          gl.uniform1i(shader.u.pointDataTexture, 2);
-          gl.activeTexture(gl.TEXTURE0);
+          shader.u.windowSize?.set(w, h);
+          shader.u.scale?.set(this.control.xScaleSmooth, this.control.yScaleSmooth);
+          shader.u.position?.set(this.control.xOffsetSmooth, this.control.yOffsetSmooth);
+          shader.u.dpr?.set(dpr);
+          shader.u.duration?.set(this.duration);
+          shader.u.startTime?.set(this.startTime / this.duration * 2.0 - 1.0);
+          shader.u.timeStep?.set(this.timeStep / this.duration * 2.0);
+          shader.u.lineAlpha?.set(1.0 - Math.pow(Math.max(0.0,durationOnScreen * 2.0-0.1),.2));
+    
+          gl.drawArrays(gl.TRIANGLES, 0, (this.points.length - 1) * 6.0);
+          gl.blendEquationSeparate(gl.FUNC_ADD, gl.FUNC_ADD);
         }
-
-        shader.u.windowSize?.set(w,h);
-        shader.u.scale?.set(this.control.xScaleSmooth, this.control.yScaleSmooth);
-        shader.u.position?.set(this.control.xOffsetSmooth, this.control.yOffsetSmooth);
-        shader.u.dpr?.set(dpr);
-        shader.u.duration?.set(this.duration);
-
-        gl.drawArrays(gl.TRIANGLES, 0, (this.points.length-1) * 6.0 );
       }
     }
     if (!this.options.noRequestAnimationFrame) {
