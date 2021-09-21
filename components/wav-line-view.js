@@ -42,7 +42,7 @@ function getVertexShader() {
       lineStart.x = startX;
       lineEnd.x = startX + timeStep;
 
-      pixelSize *= 200.0;  // Line width
+      // pixelSize *= 3.0;  // Line width
       int subPointIx = gl_VertexID % 6;
 
       vec2 pos;
@@ -211,6 +211,7 @@ export class WavLineView {
         this.udatePoints();
     
         let { w, h, dpr } = gl.updateCanvasSize(this.canvas);
+        // gl.blendFunc(gl.ONE, gl.ZERO);
         // gl.blendEquationSeparate(gl.MAX, gl.FUNC_ADD);
 
         let rect = this.parentElement.getBoundingClientRect();
@@ -238,7 +239,7 @@ export class WavLineView {
           shader.u.duration?.set(this.duration);
           shader.u.startTime?.set(this.startTime / this.duration * 2.0 - 1.0);
           shader.u.timeStep?.set(this.timeStep / this.duration * 2.0);
-          shader.u.lineAlpha?.set(1.0 - Math.pow(Math.max(0.0,durationOnScreen * 4.0-0.1),.2));
+          shader.u.lineAlpha?.set(1.0 - Math.pow(Math.max(0.0,durationOnScreen * 5.0-0.5),.2));
     
           gl.drawArrays(gl.TRIANGLES, 0, (this.points.length - 1) * 6.0);
           gl.blendEquationSeparate(gl.FUNC_ADD, gl.FUNC_ADD);

@@ -10,7 +10,7 @@ function getVertexShader() {
     out vec2 textureCoord;
     flat out float fragmentsPerPixel;
     
-    uniform int duration;
+    uniform float durationInFragments;
     uniform vec2 scale;
     uniform vec2 position;
     uniform vec2 windowSize;
@@ -19,7 +19,7 @@ function getVertexShader() {
     void main(void) {
       vec2 pos = vertexPosition.xy;
       textureCoord = (0.5 + 0.5 * pos) / scale + position;
-      fragmentsPerPixel = float(duration) / (scale.x * windowSize.x);
+      fragmentsPerPixel = durationInFragments / (scale.x * windowSize.x);
       gl_Position = vec4(pos, 0.0, 1.0);
     }`
 }
@@ -40,7 +40,7 @@ function getFragmentShader() {
   uniform vec2 scale;
   uniform int offset;
 
-  uniform int duration;
+  uniform float durationInFragments;
   uniform float playPos;
 
   uniform vec2 windowSize;
@@ -73,11 +73,9 @@ function getFragmentShader() {
 
   vec3 getDataIX1(float ix_in, int LODLevel) {
     if (fragmentsPerPixel<=0.03) {
-      ix_in += .1;
-    } else {
-      ix_in -= .4;
+      ix_in += .5;
     }
-    int len = int(ceil(pow(0.5,float(LODLevel)) * float(duration)));
+    int len = int(ceil(pow(0.5,float(LODLevel)) * durationInFragments));
     int divider = int(pow(2.0, float(LODLevel)));
     int LODOffset = LODOffsets[LODLevel];
     int ofs = LODOffset + offset / divider;
@@ -105,7 +103,8 @@ function getFragmentShader() {
     int stopIx = int(ceil(ix));
     
     vec3 result = getDataIX(ix, clamp(log2(0.5+fragmentsPerPixel*(1.0+LODLevel)),0.01,float(${levelsOfDetail})));
-    result.yz = sqrt(result.yz);
+    // result.yz = sqrt(result.yz);
+    result.z *= 4.0;
     if (fragmentsPerPixel>0.03) {
       result = result / preScale;
       vec3 resultDB = clamp(
@@ -123,12 +122,12 @@ function getFragmentShader() {
   }
 
   void main(void) {
-    float delta = (textureCoord.x * float(duration));
+    float delta = (textureCoord.x * durationInFragments);
 
     float readOffset = float(offset) + delta;
     float playDistance = (delta - playPos) / 5000.0 * pow(scale.x, 1.2);
     
-    float fragmentsPerPixel = float(duration) / (scale.x * float(windowSize.x));
+    float fragmentsPerPixel = durationInFragments / (scale.x * float(windowSize.x));
     vec3 data1 = mixDataIX(readOffset);
     vec4 beatData = getBeatData(int(round(readOffset)));
     float pxy = textureCoord.y / float(windowSize.y);
@@ -188,7 +187,7 @@ export class AudioView {
 
     this.updateCanvasBound = this.updateCanvas.bind(this);
     this.dataOffset = 0;
-    this.dataLength = 1000;
+    this.durationInFragments = 1000;
     this.onGetPlayPos = () => -1;
 
     this.preScaleMax = 1.0;
@@ -270,10 +269,10 @@ export class AudioView {
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         gl.useProgram(shader);
 
-        shader.u.playPos?.set(this.onGetPlayPos() * this.dataLength);
+        shader.u.playPos?.set(this.onGetPlayPos() * this.durationInFragments);
 
         shader.u.offset?.set(this.dataOffset); // this.webglSynth.processCount);s
-        shader.u.duration?.set(this.dataLength);
+        shader.u.durationInFragments?.set(this.durationInFragments);
         shader.u.windowSize?.set(w, h);
         shader.u.dpr?.set(dpr);
         shader.u.scale?.set(this.control.xScaleSmooth, this.control.yScaleSmooth);
@@ -323,7 +322,7 @@ export class AudioView {
   _addLODData(target, len) {
     this.LODOffsets = [0];
     len /= 4;
-    for (let lod = 0; lod < levelsOfDetail; lod++) {
+    for (let lod = 0; lod < levelsOfDetail-1; lod++) {
       let ofs_in = ~~(this.LODOffsets[lod] * 4);
       let ofs_out = ofs_in + len * 4;
       this.LODOffsets.push(ofs_out / 4);
@@ -349,8 +348,9 @@ export class AudioView {
   /**
    * 
    * @param {Float32Array} viewData 
+   * @param {number} durationInFragments
    */
-  setViewData(viewData) {
+  setViewData(viewData, durationInFragments) {
     // throw new Error("Method not implemented.");
     const gl = this.gl;
     let sourceLen = ~~(viewData.length/2);
@@ -388,8 +388,8 @@ export class AudioView {
       leftTex: this.viewTexture0.texture,
       rightTex: this.viewTexture1.texture
     }
-    // this.dataOffset = 16; // TODO: analyze starts 16 to early see analyze-loader 2 buffers extra problem
-    this.dataLength = ~~(sourceLen/4);
+    this.dataOffset = 0;
+    this.durationInFragments = durationInFragments;
   }
 
   setBeatData(beatBufferData) {
@@ -403,6 +403,6 @@ export class AudioView {
   setOffsetAndLength(recordAnalyzeBuffer, offset, length) {
     this.recordAnalyzeBuffer = recordAnalyzeBuffer;
     this.dataOffset = offset;
-    this.dataLength = length;
+    this.durationInFragments = length;
   }
 }

@@ -88,9 +88,9 @@ function getFragmentShader() {
   out vec4 fragColor;
 
   const vec4 beatColor = vec4(0.5,0.5,0.5, 0.7);
-  const vec4 barColor = vec4(0.6,0.6,0.6, 0.8);
-  const vec4 bar4Color = vec4(0.7,0.7,0.7, 0.85);
-  const vec4 bar16Color = vec4(0.8,0.8,0.8, 0.9);
+  const vec4 barColor = vec4(0.6,0.6,0.6, 0.75);
+  const vec4 bar4Color = vec4(0.75,0.75,0.75, 0.85);
+  const vec4 bar16Color = vec4(0.9,0.9,0.9, 0.95);
 
   void main(void) {
     vec4 color = vec4(0.0);
@@ -109,12 +109,12 @@ function getFragmentShader() {
     if ((int(lineInfo.y) % (beatsPerBar * 16)) == 0 && barDist < 0.1) {
       pixelsPerLine *= 64.0;
       lineColor = bar16Color;
-      lineWidth = 0.5 * dpr;
+      lineWidth = 0.95 * dpr;
       lineDist = max(lineDist,barDist);
     } else if ((int(lineInfo.y) % (beatsPerBar * 4)) == 0 && barDist < 0.1) {
       pixelsPerLine *= 16.0;
       lineColor = bar4Color;
-      lineWidth = 0.4 * dpr;
+      lineWidth = 0.6 * dpr;
       lineDist = max(lineDist,barDist);
     } else if ((int(lineInfo.y) % beatsPerBar == 0 && barDist < 0.1)) {
       pixelsPerLine *= 4.0;
