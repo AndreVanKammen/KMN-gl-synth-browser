@@ -117,7 +117,7 @@ function getFragmentShader() {
     float lineWidth = 0.25 * dpr;
     float pointWidth = 4.0 * dpr;
     if (lineStart.z > 0.0) {
-      pointWidth = 10.0 * dpr;  
+      pointWidth = 8.0 * dpr;  
     }
 
     float hasPointBorder = 1.0 - smoothstep(pointBorderWidth, pointBorderWidth + 1.25, abs(pointDist - pointWidth));
@@ -131,12 +131,12 @@ function getFragmentShader() {
         float newPointDist = length(newPointDelta);
         // pointColor = vec3(0.0);
 
-        float newHasPoint = 1.0 - smoothstep(14.0, 15.5, newPointDist);
+        float newHasPoint = 1.0 - smoothstep(8.0 * dpr, 9.5 * dpr, newPointDist);
         hasPoint = max(hasPoint, newHasPoint);
-        hasPointBorder = max(hasPointBorder - newHasPoint, 1.0 - smoothstep(0.5, 2.0, abs(newPointDist-14.0)));
+        hasPointBorder = max(hasPointBorder - newHasPoint, 0.6 - smoothstep(0.5, 2.0, abs(newPointDist-8.0)));
 
-        float plus = min(1.0 - smoothstep(6.0, 7.5, newPointDist), 
-                         1.0 - smoothstep(0.5, 2.0, min(newPointDelta.x, newPointDelta.y) ) );
+        float plus = min(1.0 - smoothstep(4.0* dpr, 4.5* dpr, newPointDist), 
+                         1.0 - smoothstep(0.5* dpr, 1.0* dpr, min(newPointDelta.x, newPointDelta.y) ) );
         hasPointBorder = max(hasPointBorder, plus);
 
       }
