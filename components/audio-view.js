@@ -157,7 +157,7 @@ function getFragmentShader() {
     beatData.rgb *= pow(clamp(beatData.rgb,0.0,1.0),vec3(0.7))*0.7;
     if (playPos > 0.0) {
       beatData.rgb *= 0.8;
-      beatData.rgb += (1.0-pow(smoothstep(-0.0,2.0,abs(playDistance)),0.15)) * 14.0;
+      beatData.rgb += (1.0-pow(smoothstep(-0.0,2.0,abs(playDistance)),0.15) + clr.b*0.1) * 14.0;
     }
     beatData.rgb *= 1.0-0.8 * smoothstep(0.0,0.2,clr);
     

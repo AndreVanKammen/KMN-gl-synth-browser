@@ -202,12 +202,12 @@ export class ControlLineEditor {
     }
   }
 
-  udatePoints(points, duration) {
+  udatePoints(points, duration, minValue = 0.0, maxValue = 1.0) {
     this.points = points;
     this.duration = duration;
     
-    this.minValue = 0.0;
-    this.maxValue = 1.0;
+    this.minValue = minValue;
+    this.maxValue = maxValue
     this.valueRange = this.maxValue - this.minValue;
 
     this.updatePointData();

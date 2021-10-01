@@ -90,7 +90,7 @@ function getFragmentShader() {
   const vec4 beatColor = vec4(0.5,0.5,0.5, 0.7);
   const vec4 barColor = vec4(0.6,0.6,0.6, 0.75);
   const vec4 bar4Color = vec4(0.75,0.75,0.75, 0.85);
-  const vec4 bar16Color = vec4(0.9,0.9,0.9, 0.95);
+  const vec4 bar8Color = vec4(0.9,0.9,0.9, 0.95);
 
   void main(void) {
     vec4 color = vec4(0.0);
@@ -106,9 +106,9 @@ function getFragmentShader() {
     float pixelsPerLine = windowSize.x / beatsOnSreen;
 
     vec4 lineColor = beatColor;
-    if ((int(lineInfo.y) % (beatsPerBar * 16)) == 0 && barDist < 0.1) {
+    if ((int(lineInfo.y) % (beatsPerBar * 8)) == 0 && barDist < 0.1) {
       pixelsPerLine *= 64.0;
-      lineColor = bar16Color;
+      lineColor = bar8Color;
       lineWidth = 0.95 * dpr;
       lineDist = max(lineDist,barDist);
     } else if ((int(lineInfo.y) % (beatsPerBar * 4)) == 0 && barDist < 0.1) {
@@ -168,11 +168,11 @@ export class BeatGridEditor {
     // this.control.addHandler(this);
 
     this.udateGrid( [
-        {time:0.0, beatNr: 1.0}, 
-        {time:1.0, beatNr: 2.0},
-        {time:2.0, beatNr: 3.0},
-        {time:3.0, beatNr: 4.0},
-        {time:4.0, beatNr: 5.0}
+        {time:0.0, nr: 1.0}, 
+        {time:1.0, nr: 2.0},
+        {time:2.0, nr: 3.0},
+        {time:3.0, nr: 4.0},
+        {time:4.0, nr: 5.0}
       ], 1.0, 10.0);
 
     this.shader = gl.checkUpdateShader(this, getVertexShader(), getFragmentShader());
@@ -201,9 +201,9 @@ export class BeatGridEditor {
     let ofs = 0;
     for (const line of this.lines) {
       data[ofs++] = (line.time / this.duration) * 2.0 - 1.0;
-      data[ofs++] = line.beatNr;
-      data[ofs++] = 0;
-      data[ofs++] = 0;
+      data[ofs++] = line.nr;
+      data[ofs++] = line.type;
+      data[ofs++] = line.phraseStart;
     }
     if (!skipUpdate) {
       this.lineInfo = gl.createOrUpdateFloat32TextureBuffer(data, this.lineInfo, 0, ofs);
