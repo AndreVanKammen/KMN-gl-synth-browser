@@ -188,7 +188,7 @@ export class ControlLineEditor {
 
     this.control.addHandler(this);
 
-    this.udatePoints( [
+    this.setPoints( [
         {time:0.0, value: 0.0}, 
         {time:0.0, value: 5/7},
         {time:1.0, value: 5/7}, 
@@ -202,12 +202,17 @@ export class ControlLineEditor {
     }
   }
 
-  udatePoints(points, duration, minValue = 0.0, maxValue = 1.0) {
+  setPoints(points, duration, minValue = 0.0, maxValue = 1.0) {
     this.points = points;
     this.duration = duration;
     
     this.minValue = minValue;
     this.maxValue = maxValue
+
+    for (const point of this.points) {
+      this.minValue = Math.min(this.minValue, point.value);
+      this.maxValue = Math.max(this.maxValue, point.value);
+    }
     this.valueRange = this.maxValue - this.minValue;
 
     this.updatePointData();
@@ -447,8 +452,8 @@ export class ControlLineEditor {
         }
 
         shader.u.windowSize?.set(w,h);
-        shader.u.scale?.set(this.control.xScaleSmooth, this.control.yScaleSmooth);
-        shader.u.position?.set(this.control.xOffsetSmooth, this.control.yOffsetSmooth);
+        shader.u.scale?.set(this.control.xScaleSmooth, 1/1.2);//this.control.yScaleSmooth);
+        shader.u.position?.set(this.control.xOffsetSmooth, -0.1);
         shader.u.dpr?.set(dpr);
         shader.u.duration?.set(this.duration);
 
