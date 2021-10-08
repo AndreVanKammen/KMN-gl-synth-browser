@@ -190,8 +190,8 @@ export class ControlLineEditor {
 
     this.setPoints( [
         {time:0.0, value: 0.0}, 
-        {time:0.0, value: 5/7},
-        {time:1.0, value: 5/7}, 
+        {time:0.01, value: 4/7},
+        {time:0.99, value: 5/7}, 
         {time:1.0, value: 0.0} 
       ], 1.0);
 

@@ -20,6 +20,7 @@ function getVertexShader() {
       vec2 pos = vertexPosition.xy;
       textureCoord = (0.5 + 0.5 * pos) / scale + position;
       fragmentsPerPixel = durationInFragments / (scale.x * windowSize.x);
+      // pos.y *= scale.y;
       gl_Position = vec4(pos, 0.0, 1.0);
     }`
 }
@@ -175,8 +176,11 @@ function getFragmentShader() {
     if (fragmentsPerPixel<=0.03) {
       clr.rgb *= 0.75;
     }
+    float a = max(max(clr.r,clr.g),clr.b);
 
-    fragColor = vec4(clamp(pow(beatData.rgb / 12.0,vec3(2.0)) + clr.rgb, 0.0,1.0) ,1.0);
+    if (textureCoord.y>0.0) {
+      fragColor = vec4(clamp(pow(beatData.rgb / 12.0,vec3(2.0)) + clr.rgb, 0.0,1.0) ,a * 0.5);
+    }
   }
   `
 }

@@ -96,9 +96,9 @@ function getFragmentShader() {
     vec4 color = vec4(0.0);
     // float lineDist = line(textureCoordScreen.xy, lineStartScreen.xy, lineEndScreen.xy);
     float lineDist = abs(textureCoordScreen.x - lineXScreen);
-    float halfHeight = windowSize.y * 0.5;
+    float halfHeight = windowSize.y * (0.5 * scale.y);
     float barDist = halfHeight * 0.9 - abs(halfHeight-textureCoordScreen.y);
-
+    
     float lineWidth = 0.15 * dpr;
 
     float durationOnScreen = duration / scale.x;
