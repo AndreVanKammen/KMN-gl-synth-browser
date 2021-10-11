@@ -189,10 +189,8 @@ export class ControlLineEditor {
     this.control.addHandler(this);
 
     this.setPoints( [
-        {time:0.0, value: 0.0}, 
-        {time:0.01, value: 4/7},
-        {time:0.99, value: 5/7}, 
-        {time:1.0, value: 0.0} 
+        {time:0.0, value: 5/7},
+        {time:1.0, value: 5/7} 
       ], 1.0);
 
     this.shader = gl.checkUpdateShader(this, getVertexShader(), getFragmentShader());
@@ -452,8 +450,8 @@ export class ControlLineEditor {
         }
 
         shader.u.windowSize?.set(w,h);
-        shader.u.scale?.set(this.control.xScaleSmooth, 1/1.2);//this.control.yScaleSmooth);
-        shader.u.position?.set(this.control.xOffsetSmooth, -0.1);
+        shader.u.scale?.set(this.control.xScaleSmooth, this.control.yScaleSmooth);
+        shader.u.position?.set(this.control.xOffsetSmooth, this.control.yOffsetSmooth);
         shader.u.dpr?.set(dpr);
         shader.u.duration?.set(this.duration);
 

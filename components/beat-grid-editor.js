@@ -96,8 +96,9 @@ function getFragmentShader() {
     vec4 color = vec4(0.0);
     // float lineDist = line(textureCoordScreen.xy, lineStartScreen.xy, lineEndScreen.xy);
     float lineDist = abs(textureCoordScreen.x - lineXScreen);
-    float halfHeight = windowSize.y * (0.5 * scale.y);
-    float barDist = halfHeight * 0.9 - abs(halfHeight-textureCoordScreen.y);
+    float centerPoint = windowSize.y * ((0.5 - position.y) * scale.y);
+    float halfHeight = windowSize.y * scale.y * 0.5;
+    float edgeDist = halfHeight * 0.9 - abs(centerPoint-textureCoordScreen.y);
     
     float lineWidth = 0.15 * dpr;
 
@@ -106,25 +107,25 @@ function getFragmentShader() {
     float pixelsPerLine = windowSize.x / beatsOnSreen;
 
     vec4 lineColor = beatColor;
-    if ((int(lineInfo.y) % (beatsPerBar * 8)) == 0 && barDist < 0.1) {
+    if ((int(lineInfo.y) % (beatsPerBar * 8)) == 0 && edgeDist < 0.1) {
       pixelsPerLine *= 64.0;
       lineColor = bar8Color;
       lineWidth = 0.95 * dpr;
-      lineDist = max(lineDist,barDist);
-    } else if ((int(lineInfo.y) % (beatsPerBar * 4)) == 0 && barDist < 0.1) {
+      lineDist = max(lineDist,edgeDist);
+    } else if ((int(lineInfo.y) % (beatsPerBar * 4)) == 0 && edgeDist < 0.1) {
       pixelsPerLine *= 16.0;
       lineColor = bar4Color;
       lineWidth = 0.6 * dpr;
-      lineDist = max(lineDist,barDist);
-    } else if ((int(lineInfo.y) % beatsPerBar == 0 && barDist < 0.1)) {
+      lineDist = max(lineDist,edgeDist);
+    } else if ((int(lineInfo.y) % beatsPerBar == 0 && edgeDist < 0.1)) {
       pixelsPerLine *= 4.0;
       lineColor = barColor;
       lineWidth = 0.3 * dpr;
-      lineDist = max(lineDist,barDist);
+      lineDist = max(lineDist,edgeDist);
     } else {
       lineColor = beatColor;
     }
-    if (lineInfo.z > 0.0 && barDist < -10.2) {
+    if (lineInfo.z > 0.0 && edgeDist < -10.2) {
       lineColor = vec4(0.0);
     }
     lineColor.a *= clamp(pow(pixelsPerLine, 0.3) - 1.8, 0.0, 1.0);
