@@ -302,6 +302,11 @@ export class ControlLineEditor {
     }
     return false;
   }
+  handleLeave(x, y) {
+    console.log('leave');
+    // this.updateSelect(-1,-1);
+  }
+  
   handleMove(x, y) {
     if (this.mouseDownOnPoint) {
       let dx = this.mouseDownOnPoint.x - x;
