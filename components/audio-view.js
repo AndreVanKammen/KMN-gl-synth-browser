@@ -76,9 +76,11 @@ function getFragmentShader() {
     if (fragmentsPerPixel<=0.03) {
       ix_in += .5;
     }
-    int len = int(ceil(pow(0.5,float(LODLevel)) * durationInFragments));
+    // int len = int(ceil(pow(0.5,float(LODLevel)) * durationInFragments));
     int divider = int(pow(2.0, float(LODLevel)));
     int LODOffset = LODOffsets[LODLevel];
+    int maxLODOffset = LODOffsets[LODLevel+1];
+    int len = maxLODOffset - LODOffset - 2;
     int ofs = LODOffset + offset / divider;
     float ix = float(LODOffset) + ix_in / float(divider);
 
@@ -255,7 +257,10 @@ export class AudioView {
     this.beatBuffer = { bufferWidth: this.webglSynth.bufferWidth };
   }
 
-  updateCanvas() {
+  updateCanvas(
+    xScaleSmooth = this.control.xScaleSmooth, yScaleSmooth = this.control.yScaleSmooth,
+    xOffsetSmooth = this.control.xOffsetSmooth, yOffsetSmooth = this.control.yOffsetSmooth) {
+    
     let gl = this.gl;
     let shader = gl.checkUpdateShader(this, getVertexShader(), this.webglSynth.getDefaultDefines() + getFragmentShader());
 
@@ -279,8 +284,8 @@ export class AudioView {
         shader.u.durationInFragments?.set(this.durationInFragments);
         shader.u.windowSize?.set(w, h);
         shader.u.dpr?.set(dpr);
-        shader.u.scale?.set(this.control.xScaleSmooth, this.control.yScaleSmooth);
-        shader.u.position?.set(this.control.xOffsetSmooth, this.control.yOffsetSmooth);
+        shader.u.scale?.set(xScaleSmooth, yScaleSmooth);
+        shader.u.position?.set(xOffsetSmooth, yOffsetSmooth);
 
         // shader.u.removeAvgFromRMS.set(false);
         shader.u.preScale?.set(      this.preScaleMax,       this.preScaleRMS ,       this.preScaleEng);

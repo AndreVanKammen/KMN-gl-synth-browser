@@ -1,6 +1,6 @@
 import WebGLSynth from "../../KMN-gl-synth.js/webgl-synth.js";
 import { animationFrame } from "../../KMN-utils-browser/animation-frame.js";
-import PanZoomControl from "../../KMN-utils-browser/pan-zoom-control.js";
+import PanZoomControl, { PanZoomBase } from "../../KMN-utils-browser/pan-zoom-control.js";
 import getWebGLContext from "../../KMN-utils.js/webglutils.js";
 // 0 1
 // 2
@@ -178,7 +178,7 @@ export class ControlLineEditor {
     this.canvas = this.options.canvas || this.parentElement.$el({tag:'canvas', cls:'analyzerCanvas'});
     const gl = this.gl = getWebGLContext(this.canvas);
 
-    /** @type {PanZoomControl} */
+    /** @type {PanZoomBase} */
     this.control = this.options.control || new PanZoomControl(this.parentElement, {
       minYScale: 1.0,
       maxYScale: 1.0,
@@ -302,7 +302,7 @@ export class ControlLineEditor {
     }
     return false;
   }
-  handleMove(x,y) {
+  handleMove(x, y) {
     if (this.mouseDownOnPoint) {
       let dx = this.mouseDownOnPoint.x - x;
       let dy = this.mouseDownOnPoint.y - y;
