@@ -125,7 +125,7 @@ function getFragmentShader() {
     } else {
       lineColor = beatColor;
     }
-    if (lineInfo.z > 0.0 && edgeDist < -10.2) {
+    if (lineInfo.z < 0.0 && edgeDist < 0.1) {
       lineColor = vec4(0.0);
     }
     lineColor.a *= clamp(pow(pixelsPerLine, 0.3) - 1.8, 0.0, 1.0);

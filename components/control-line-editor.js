@@ -303,8 +303,8 @@ export class ControlLineEditor {
     return false;
   }
   handleLeave(x, y) {
-    console.log('leave');
-    // this.updateSelect(-1,-1);
+    this.updateSelect(-1,-1);
+    this.pointInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.pointData, this.pointInfo);
   }
   
   handleMove(x, y) {
