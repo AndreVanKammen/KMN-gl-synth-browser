@@ -18,9 +18,10 @@ function getVertexShader() {
 
     void main(void) {
       vec2 pos = vertexPosition.xy;
-      textureCoord = (0.5 + 0.5 * pos) / scale + position;
+      textureCoord = (pos + 1.0) * 0.5;
+      // Never draw outside the pan zoom area, viewport will handle textureCoord outside
+      pos = (pos - position * 2.0 + 1.0) * scale - 1.0;
       fragmentsPerPixel = durationInFragments / (scale.x * windowSize.x);
-      // pos.y *= scale.y;
       gl_Position = vec4(pos, 0.0, 1.0);
     }`
 }
@@ -179,10 +180,11 @@ function getFragmentShader() {
       clr.rgb *= 0.75;
     }
     float a = max(max(clr.r,clr.g),clr.b);
-
-    if (textureCoord.y>0.0) {
-      fragColor = vec4(clamp(pow(beatData.rgb / 12.0,vec3(2.0)) + clr.rgb, 0.0,1.0) ,a * 0.5);
+    fragColor = vec4(clamp(pow(beatData.rgb / 12.0,vec3(2.0)) + clr.rgb, 0.0,1.0) ,a);
+    if (textureCoord.y<0.0) {
+      fragColor *= 0.0;
     }
+    fragColor = vec4(0.15,0.15,0.2,1.0) * (1.0-fragColor.a) + fragColor;
   }
   `
 }

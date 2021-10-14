@@ -128,6 +128,11 @@ function getFragmentShader() {
     if (lineInfo.z < 0.0 && edgeDist < 0.1) {
       lineColor = vec4(0.0);
     }
+    if (lineInfo.w > 2.0) {
+      pixelsPerLine *= 30.0;
+      lineWidth = 0.15 * dpr;
+      lineColor = vec4(1.0,1.0,0.0,1.0);
+    }
     lineColor.a *= clamp(pow(pixelsPerLine, 0.3) - 1.8, 0.0, 1.0);
                   // * pow(durationOnScreen, 0.1) / 3.0;
 
@@ -170,14 +175,6 @@ export class BeatGridEditor {
     });
 
     // this.control.addHandler(this);
-
-    this.udateGrid( [
-        {time:0.0, nr: 1.0}, 
-        {time:1.0, nr: 2.0},
-        {time:2.0, nr: 3.0},
-        {time:3.0, nr: 4.0},
-        {time:4.0, nr: 5.0}
-      ], 1.0, 10.0);
 
     this.shader = gl.checkUpdateShader(this, getVertexShader(), getFragmentShader());
 

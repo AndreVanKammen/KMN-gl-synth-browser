@@ -1,6 +1,7 @@
 import WebGLSynth from "../../KMN-gl-synth.js/webgl-synth.js";
 import { animationFrame } from "../../KMN-utils-browser/animation-frame.js";
 import PanZoomControl, { PanZoomBase } from "../../KMN-utils-browser/pan-zoom-control.js";
+import defer from "../../KMN-utils.js/defer.js";
 import getWebGLContext from "../../KMN-utils.js/webglutils.js";
 // 0 1
 // 2
@@ -167,6 +168,9 @@ export class ControlLineEditor {
     this.width  = 10;
     this.height = 10;
     this.mouseDownOnPoint = null;
+    this.onUpdatePointData = null;
+    this.updateDefered = false;
+    this.handlePointDataUpdatedBound = this.handlePointDataUpdated.bind(this);
   }
 
   /**
@@ -230,6 +234,16 @@ export class ControlLineEditor {
     if (!skipUpdate) {
       this.pointInfo = gl.createOrUpdateFloat32TextureBuffer(data, this.pointInfo, 0, ofs);
     }
+    if (this.onUpdatePointData) {
+      if (!this.updateDefered) {
+        this.updateDefered = true;
+        defer(this.handlePointDataUpdatedBound);
+      }
+    }
+  }
+  handlePointDataUpdated() {
+    this.updateDefered = false;
+    this.onUpdatePointData(this);
   }
 
   createNewPoint(x,y) {
