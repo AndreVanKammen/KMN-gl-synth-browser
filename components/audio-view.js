@@ -58,6 +58,8 @@ function getFragmentShader() {
   uniform vec3 quadraticCurve;
   uniform vec3 linearDbMix;
   uniform vec3 dBRange;
+  uniform vec4 backgroundColor;
+  uniform float opacity;
 
   uniform sampler2D analyzeTexturesLeft;
   uniform sampler2D analyzeTexturesRight;
@@ -179,12 +181,12 @@ function getFragmentShader() {
     if (fragmentsPerPixel<=0.03) {
       clr.rgb *= 0.75;
     }
-    float a = max(max(clr.r,clr.g),clr.b);
+    float a = max(max(clr.r,clr.g),clr.b) * opacity;
     fragColor = vec4(clamp(pow(beatData.rgb / 12.0,vec3(2.0)) + clr.rgb, 0.0,1.0) ,a);
     if (textureCoord.y<0.0) {
       fragColor *= 0.0;
     }
-    fragColor = vec4(0.15,0.15,0.2,1.0) * (1.0-fragColor.a) + fragColor;
+    fragColor = backgroundColor * (1.0-fragColor.a) + fragColor;
   }
   `
 }
@@ -261,7 +263,8 @@ export class AudioView {
 
   updateCanvas(
     xScaleSmooth = this.control.xScaleSmooth, yScaleSmooth = this.control.yScaleSmooth,
-    xOffsetSmooth = this.control.xOffsetSmooth, yOffsetSmooth = this.control.yOffsetSmooth) {
+    xOffsetSmooth = this.control.xOffsetSmooth, yOffsetSmooth = this.control.yOffsetSmooth,
+    bg = [0.15, 0.15, 0.2, 1.0], opacity = 1.0) {
     
     let gl = this.gl;
     let shader = gl.checkUpdateShader(this, getVertexShader(), this.webglSynth.getDefaultDefines() + getFragmentShader());
@@ -293,7 +296,9 @@ export class AudioView {
         shader.u.preScale?.set(      this.preScaleMax,       this.preScaleRMS ,       this.preScaleEng);
         shader.u.quadraticCurve?.set(this.quadraticCurveMax, this.quadraticCurveRMS , this.quadraticCurveEng);
         shader.u.linearDbMix?.set(   this.linearDbMixMax,    this.linearDbMixRMS ,    this.linearDbMixEng);
-        shader.u.dBRange?.set(       this.dBRangeMax,        this.dBRangeRMS,         this.dBRangeEng);
+        shader.u.dBRange?.set(this.dBRangeMax, this.dBRangeRMS, this.dBRangeEng);
+        shader.u.backgroundColor?.set(bg[0], bg[1], bg[2], bg[3]);
+        shader.u.opacity?.set(opacity);
         shader.u.showBeats?.set(this.showBeats);
 
         if (shader.u["LODOffsets[0]"]) {
