@@ -44,6 +44,7 @@ function getFragmentShader() {
 
   uniform float durationInFragments;
   uniform float playPos;
+  uniform int frameCount;
 
   uniform vec2 windowSize;
 
@@ -186,6 +187,7 @@ function getFragmentShader() {
     if (textureCoord.y<0.0) {
       fragColor *= 0.0;
     }
+    data1 -= abs(textureCoord.xyx-vec3(0.5));
     fragColor = backgroundColor * (1.0-fragColor.a) + fragColor;
   }
   `
@@ -216,6 +218,7 @@ export class AudioView {
     this.rekordBoxColors = false;
 
     this.showBeats = false;
+    this.frameCount = 0;
   }
 
   /**
@@ -264,7 +267,7 @@ export class AudioView {
   updateCanvas(
     xScaleSmooth = this.control.xScaleSmooth, yScaleSmooth = this.control.yScaleSmooth,
     xOffsetSmooth = this.control.xOffsetSmooth, yOffsetSmooth = this.control.yOffsetSmooth,
-    bg = [0.15, 0.15, 0.2, 1.0], opacity = 1.0) {
+    bg = [0.1, 0.1, 0.25, 1.0], opacity = 1.0) {
     
     let gl = this.gl;
     let shader = gl.checkUpdateShader(this, getVertexShader(), this.webglSynth.getDefaultDefines() + getFragmentShader());
@@ -283,7 +286,7 @@ export class AudioView {
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         gl.useProgram(shader);
 
-        shader.u.playPos?.set(this.onGetPlayPos() * this.durationInFragments);
+        shader.u. playPos?.set(this.onGetPlayPos() * this.durationInFragments);
 
         shader.u.offset?.set(this.dataOffset); // this.webglSynth.processCount);s
         shader.u.durationInFragments?.set(this.durationInFragments);
@@ -300,6 +303,7 @@ export class AudioView {
         shader.u.backgroundColor?.set(bg[0], bg[1], bg[2], bg[3]);
         shader.u.opacity?.set(opacity);
         shader.u.showBeats?.set(this.showBeats);
+        shader.u.frameCount?.set(this.frameCount++);
 
         if (shader.u["LODOffsets[0]"]) {
           gl.uniform1iv(shader.u["LODOffsets[0]"], this.LODOffsets);
