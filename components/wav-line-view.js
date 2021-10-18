@@ -2,6 +2,7 @@ import WebGLSynth from "../../KMN-gl-synth.js/webgl-synth.js";
 import { animationFrame } from "../../KMN-utils-browser/animation-frame.js";
 import PanZoomControl from "../../KMN-utils-browser/pan-zoom-control.js";
 import getWebGLContext from "../../KMN-utils.js/webglutils.js";
+import dataModel from "../../mixer-main/data/dataModel.js";
 
 function getVertexShader() {
   return /*glsl*/`precision highp float;
@@ -129,6 +130,7 @@ export class WavLineView {
     this.leftSamples = new Float32Array();
     this.rightSamples = new Float32Array();
     this.sampleRate = 44100;
+    this.onGetAudioTrack = () => null;
   }
 
   /**
@@ -156,6 +158,15 @@ export class WavLineView {
   }
 
   udatePoints() {
+
+    if (this.leftSamples.length === 0) {
+      let track = this.onGetAudioTrack();
+      if (track) {
+        this.leftSamples = track.leftSamples;
+        this.rightSamples = track.rightSamples;
+        this.sampleRate = dataModel.synthController.sampleRate;
+      }
+    }
     this.duration = this.leftSamples.length / this.sampleRate;
     let durationOnScreen = (this.duration / this.control.xScaleSmooth);
     let screenStartTime = this.control.xOffsetSmooth * this.duration;
