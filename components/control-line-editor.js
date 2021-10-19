@@ -1,12 +1,26 @@
 import WebGLSynth from "../../KMN-gl-synth.js/webgl-synth.js";
 import { animationFrame } from "../../KMN-utils-browser/animation-frame.js";
-import PanZoomControl, { PanZoomBase } from "../../KMN-utils-browser/pan-zoom-control.js";
+import PanZoomControl, { PanZoomBase, PanZoomParent } from "../../KMN-utils-browser/pan-zoom-control.js";
 import defer from "../../KMN-utils.js/defer.js";
 import getWebGLContext from "../../KMN-utils.js/webglutils.js";
 // 0 1
 // 2
 // 2 1 3 4 
 //   3   5
+const colors = [
+  [0.9, 0.9, 0.9],
+  [1.0,   0,   0],
+  [  0, 0.7,   0],
+  [0.8, 0.5,   0],
+  [  0, 0.5, 0.8],
+  [0.8,   0, 0.8],
+  [0.9, 0.5,   0],
+  [  0, 0.5, 0.5],
+  [0.5,   0, 0.9],
+  [0.5, 0.5,   0],
+  [  0, 0.25,1.0],
+  [0.5,   0, 1.0]
+];
 
 function getVertexShader() {
   return /*glsl*/`precision highp float;
@@ -84,6 +98,7 @@ function getFragmentShader() {
 
   uniform vec2 windowSize;
   uniform float dpr;
+  uniform vec3 lineColor;
 
   flat in vec4 lineStart;
   flat in vec4 lineEnd;
@@ -104,7 +119,6 @@ function getFragmentShader() {
   }
 
   const vec3 pointBorderColor = vec3(0.8);
-  const vec3 lineColor = vec3(0.6,0.6,0.6);
 
   void main(void) {
     vec4 color = vec4(0.0);
@@ -148,9 +162,9 @@ function getFragmentShader() {
     hasLine = max(hasLine - hasPoint, 0.0);
     hasPoint = max(hasPoint - hasPointBorder, 0.0);
 
-    color.rgb = hasPoint       * pointColor +
-                hasPointBorder * pointBorderColor +
-                hasLine        * lineColor;
+    color.rgb = clamp(hasPoint       * lineColor * 0.5 + //pointColor +
+                      hasPointBorder * lineColor * 1.5 +
+                      hasLine        * lineColor, 0.0, 1.0);
                   
     color.a = max(max(hasPoint, hasLine), hasPointBorder);
     if (color.a > 0.001) {
@@ -161,52 +175,29 @@ function getFragmentShader() {
   `
 }
 
-export class ControlLineEditor {
-  constructor (options) {
-    this.options = options;
-    this.updateCanvasBound = this.updateCanvas.bind(this);
-    this.width  = 10;
-    this.height = 10;
+class ControlLineData {
+  /**
+   * 
+   * @param {ControlLineEditor} owner 
+   * @param {*} gl 
+   * @param {PanZoomBase} control 
+   */
+  constructor(owner, gl, control) {
+    this.owner = owner;
+    this.gl = gl;
+    this.control = control;
     this.mouseDownOnPoint = null;
     this.onUpdatePointData = null;
-    this.updateDefered = false;
-    this.handlePointDataUpdatedBound = this.handlePointDataUpdated.bind(this);
   }
 
   /**
-   * @param {HTMLElement} parentElement
+   * 
+   * @param {{time:number,value:number}[]} points 
+   * @param {number} minValue 
+   * @param {number} maxValue 
    */
-  initializeDOM(parentElement) {
-    this.parentElement = parentElement;
-
-    this.canvas = this.options.canvas || this.parentElement.$el({tag:'canvas', cls:'analyzerCanvas'});
-    const gl = this.gl = getWebGLContext(this.canvas);
-
-    /** @type {PanZoomBase} */
-    this.control = this.options.control || new PanZoomControl(this.parentElement, {
-      minYScale: 1.0,
-      maxYScale: 1.0,
-      minXScale: 1.0,
-      maxXScale: 1000.0
-    });
-
-    this.control.addHandler(this);
-
-    this.setPoints( [
-        {time:0.0, value: 5/7},
-        {time:1.0, value: 5/7} 
-      ], 1.0);
-
-    this.shader = gl.checkUpdateShader(this, getVertexShader(), getFragmentShader());
-
-    if (!this.options.noRequestAnimationFrame) {
-      animationFrame(this.updateCanvasBound);
-    }
-  }
-
-  setPoints(points, duration, minValue = 0.0, maxValue = 1.0) {
+  setPoints(points, minValue = 0.0, maxValue = 1.0) {
     this.points = points;
-    this.duration = duration;
     
     this.minValue = minValue;
     this.maxValue = maxValue
@@ -226,7 +217,7 @@ export class ControlLineEditor {
     const data = this.pointData = new Float32Array(Math.ceil(this.points.length * 4.0 / 4096) * 4096);
     let ofs = 0;
     for (const point of this.points) {
-      data[ofs++] = (point.time / this.duration) * 2.0 - 1.0;
+      data[ofs++] = (point.time / this.owner.duration) * 2.0 - 1.0;
       data[ofs++] = (point.value - this.minValue) / this.valueRange * 2.0 - 1.0;
       data[ofs++] = 0; // use for hover and stuff
       data[ofs++] = 0;
@@ -234,16 +225,12 @@ export class ControlLineEditor {
     if (!skipUpdate) {
       this.pointInfo = gl.createOrUpdateFloat32TextureBuffer(data, this.pointInfo, 0, ofs);
     }
-    if (this.onUpdatePointData) {
-      if (!this.updateDefered) {
-        this.updateDefered = true;
-        defer(this.handlePointDataUpdatedBound);
+    if (this.owner.onUpdatePointData) {
+      if (!this.owner.updateDefered) {
+        this.owner.updateDefered = true;
+        defer(this.owner.handlePointDataUpdatedBound);
       }
     }
-  }
-  handlePointDataUpdated() {
-    this.updateDefered = false;
-    this.onUpdatePointData(this);
   }
 
   createNewPoint(x,y) {
@@ -292,7 +279,7 @@ export class ControlLineEditor {
     if (this.selectedPointIx > 0 || this.selectedLineIx !== -1) {
       this.mouseDownOnPoint = {x,y};
       this.mouseDownMinTime = 0;
-      this.mouseDownMaxTime = this.duration;
+      this.mouseDownMaxTime = this.owner.duration;
       if (this.selectedPointIx > 0) {
         this.mouseDownMinTime = this.points[this.selectedPointIx-1].time;
       
@@ -314,7 +301,7 @@ export class ControlLineEditor {
       this.pointInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.pointData, this.pointInfo);
       return true;
     }
-    return false;
+    return this.selectedPointIx !== -1 || this.selectedLineIx !== -1;
   }
   handleLeave(x, y) {
     this.updateSelect(-1,-1);
@@ -355,7 +342,7 @@ export class ControlLineEditor {
         this.pointData[this.selectedLineIx * 4 + 3] = 2.0;
         this.pointData[this.selectedLineIx * 4 + 6] = 1.0;
       } else {
-        let newTime = this.mouseDownTime - dx * this.duration;
+        let newTime = this.mouseDownTime - dx * this.owner.duration;
         newTime = Math.min(Math.max(newTime, this.mouseDownMinTime),this.mouseDownMaxTime);
         this.points[this.selectedPointIx].time = newTime;
   
@@ -370,7 +357,7 @@ export class ControlLineEditor {
       this.updateSelect(x,y);
     }
     this.pointInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.pointData, this.pointInfo);
-    return false;
+    return this.selectedPointIx !== -1 || this.selectedLineIx !== -1;
   }
   handleUp(x,y) {
     this.mouseDownOnPoint = null;
@@ -386,8 +373,8 @@ export class ControlLineEditor {
     const pointSize = 20.0;
     const xOfs = x * 2.0 - 1.0;
     const yOfs = y * 2.0 - 1.0;
-    const xFact = this.width * this.control.xScale / 2.0;
-    const yFact = this.height * this.control.yScale / 2.0;
+    const xFact = this.owner.width * this.control.xScale / 2.0;
+    const yFact = this.owner.height * this.control.yScale / 2.0;
     let ofs = 0;
     let minDist = pointSize;
     let selectedIx = -1;
@@ -415,9 +402,9 @@ export class ControlLineEditor {
     this.selectedLineIx = -1;
     if (selectedIx !== -1) {
       this.pointData[selectedIx * 4 + 2] = 1.0;
-      this.parentElement.style.cursor = 'move';
+      this.owner.parentElement.style.cursor = 'move';
     } else {
-      this.parentElement.style.cursor = '';
+      this.owner.parentElement.style.cursor = '';
       if (lineIx >= 1) {
         let pax = this.pointData[(lineIx - 1) * 4];
         let pbx = this.pointData[lineIx * 4];
@@ -429,9 +416,9 @@ export class ControlLineEditor {
           this.selectedLineIx = lineIx - 1;
           this.selectedLineOffset = lineX;
           if (this.control.event.ctrlKey) {
-            this.parentElement.style.cursor = 'copy';
+            this.owner.parentElement.style.cursor = 'copy';
           } else {
-            this.parentElement.style.cursor = 'ns-resize';
+            this.owner.parentElement.style.cursor = 'ns-resize';
             lineX = 2.0;
           }
           this.pointData[this.selectedLineIx * 4 + 3] = lineX;
@@ -441,12 +428,78 @@ export class ControlLineEditor {
     this.selectedPointIx = selectedIx;
   }
 
+
+}
+export class ControlLineEditor {
+  constructor (options) {
+    this.options = options;
+    this.updateCanvasBound = this.updateCanvas.bind(this);
+    this.width  = 10;
+    this.height = 10;
+    this.mouseDownOnPoint = null;
+    this.onUpdatePointData = null;
+    this.updateDefered = false;
+    this.handlePointDataUpdatedBound = this.handlePointDataUpdated.bind(this);
+ }
+
+  /**
+   * @param {HTMLElement} parentElement
+   */
+  initializeDOM(parentElement) {
+    this.parentElement = parentElement;
+
+    this.canvas = this.options.canvas || this.parentElement.$el({tag:'canvas', cls:'analyzerCanvas'});
+    const gl = this.gl = getWebGLContext(this.canvas);
+
+    /** @type {PanZoomBase} */
+    this.control = this.options.control || new PanZoomControl(this.parentElement, {
+      minYScale: 1.0,
+      maxYScale: 1.0,
+      minXScale: 1.0,
+      maxXScale: 1000.0
+    });
+
+    /** @type {Record<number,ControlLineData>}*/
+    this.controlData = {};
+
+    this.shader = gl.checkUpdateShader(this, getVertexShader(), getFragmentShader());
+
+    if (!this.options.noRequestAnimationFrame) {
+      animationFrame(this.updateCanvasBound);
+    }
+  }
+
+  handlePointDataUpdated() {
+    this.updateDefered = false;
+    this.onUpdatePointData(this);
+  }
+
+/**
+ * 
+ * @param {string} dataName 
+ * @param {{time:number,value:number}[]} points 
+ * @param {number} duration 
+ * @param {number} minValue 
+ * @param {number} maxValue 
+ */
+  setPoints(dataName, points, duration, minValue = 0.0, maxValue = 1.0) {
+    this.duration = duration;
+    /** @type {ControlLineData} */
+    let data = this.controlData[dataName];
+    if (!data) {
+      data = new ControlLineData(this, this.gl, this.control);
+      this.control.addHandler(data);
+      this.controlData[dataName] = data;
+    }
+    data.setPoints(points, minValue, maxValue);
+  }
+
   updateCanvas() {
     let gl = this.gl;
     this.shader = gl.checkUpdateShader(this, getVertexShader(), getFragmentShader());
     let shader = this.shader;
 
-    if (gl && shader && this.parentElement && this.points?.length > 0) {
+    if (gl && shader && this.parentElement) {
 
       let {w, h, dpr} = gl.updateCanvasSize(this.canvas);
 
@@ -461,20 +514,24 @@ export class ControlLineEditor {
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         gl.useProgram(shader);
 
-        if (shader.u.pointDataTexture) {
-          gl.activeTexture(gl.TEXTURE2);
-          gl.bindTexture(gl.TEXTURE_2D, this.pointInfo.texture);
-          gl.uniform1i(shader.u.pointDataTexture, 2);
-          gl.activeTexture(gl.TEXTURE0);
-        }
-
         shader.u.windowSize?.set(w,h);
         shader.u.scale?.set(this.control.xScaleSmooth, this.control.yScaleSmooth);
         shader.u.position?.set(this.control.xOffsetSmooth, this.control.yOffsetSmooth);
         shader.u.dpr?.set(dpr);
         shader.u.duration?.set(this.duration);
 
-        gl.drawArrays(gl.TRIANGLES, 0, (this.points.length-1) * 6.0 );
+        let clrIx = 0;
+        for (let key of Object.keys(this.controlData)) {
+          let data = this.controlData[key];
+          shader.u.lineColor?.set.apply(this, colors[clrIx++ % colors.length]);// (0.6,0.6,0.6);
+          if (shader.u.pointDataTexture) {
+            gl.activeTexture(gl.TEXTURE2);
+            gl.bindTexture(gl.TEXTURE_2D, data.pointInfo.texture);
+            gl.uniform1i(shader.u.pointDataTexture, 2);
+            gl.activeTexture(gl.TEXTURE0);
+          }
+          gl.drawArrays(gl.TRIANGLES, 0, (data.points.length - 1) * 6.0);
+        }
       }
     }
     if (!this.options.noRequestAnimationFrame) {
