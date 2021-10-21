@@ -60,6 +60,7 @@ function getFragmentShader() {
   uniform vec3 linearDbMix;
   uniform vec3 dBRange;
   uniform vec4 backgroundColor;
+  uniform vec4 borderColor;
   uniform float opacity;
 
   uniform sampler2D analyzeTexturesLeft;
@@ -137,12 +138,12 @@ function getFragmentShader() {
     float fragmentsPerPixel = durationInFragments / (scale.x * float(windowSize.x));
     vec3 data1 = mixDataIX(readOffset);
     vec4 beatData = getBeatData(int(round(readOffset)));
-    float pxy = textureCoord.y / float(windowSize.y);
+    vec2 px = vec2(1.0) / vec2(windowSize) / scale;
 
     vec3 dist = clamp(data1,0.0,1.0);
     dist = smoothstep(
-      dist - vec3(pxy),
-      dist + vec3(pxy), 
+      dist - vec3(px.y),
+      dist + vec3(px.y), 
       abs(vec3(1.0 - 2.0 * textureCoord.y)));
     vec3 clr = 1.0 - dist;
     clr.r = max(clr.r - clr.b * clr.b * 0.2, 0.0);
@@ -187,8 +188,9 @@ function getFragmentShader() {
     if (textureCoord.y<0.0) {
       fragColor *= 0.0;
     }
-    data1 -= abs(textureCoord.xyx-vec3(0.5));
-    fragColor = backgroundColor * (1.0-fragColor.a) + fragColor;
+    vec2 border = smoothstep(0.5-px*2.0,vec2(0.5)-px,abs(textureCoord.xy - vec2(0.5)));
+    vec4 bgColor = mix(backgroundColor, borderColor, max(border.x, border.y));
+    fragColor = bgColor * (1.0-fragColor.a) + fragColor;
   }
   `
 }
@@ -219,6 +221,7 @@ export class AudioView {
 
     this.showBeats = false;
     this.frameCount = 0;
+    this.isSelected = false;
   }
 
   /**
@@ -267,7 +270,9 @@ export class AudioView {
   updateCanvas(
     xScaleSmooth = this.control.xScaleSmooth, yScaleSmooth = this.control.yScaleSmooth,
     xOffsetSmooth = this.control.xOffsetSmooth, yOffsetSmooth = this.control.yOffsetSmooth,
-    bg = [0.1, 0.1, 0.25, 1.0], opacity = 1.0) {
+    bg = [0.1, 0.1, 0.25, 1.0],
+    border = [0.5, 0.5, 1.0, 1.0],
+    opacity = 1.0) {
     
     let gl = this.gl;
     let shader = gl.checkUpdateShader(this, getVertexShader(), this.webglSynth.getDefaultDefines() + getFragmentShader());
@@ -301,6 +306,11 @@ export class AudioView {
         shader.u.linearDbMix?.set(   this.linearDbMixMax,    this.linearDbMixRMS ,    this.linearDbMixEng);
         shader.u.dBRange?.set(this.dBRangeMax, this.dBRangeRMS, this.dBRangeEng);
         shader.u.backgroundColor?.set(bg[0], bg[1], bg[2], bg[3]);
+        if (this.isSelected) {
+          shader.u.borderColor?.set(border[0], border[1], border[2], border[3]);
+        } else {
+          shader.u.borderColor?.set(bg[0], bg[1], bg[2], bg[3]);
+        }
         shader.u.opacity?.set(opacity);
         shader.u.showBeats?.set(this.showBeats);
         shader.u.frameCount?.set(this.frameCount++);
