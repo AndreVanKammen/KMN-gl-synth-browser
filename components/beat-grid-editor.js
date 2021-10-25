@@ -174,7 +174,7 @@ export class BeatGridEditor {
       maxXScale: 1000.0
     });
 
-    // this.control.addHandler(this);
+    this.control.addHandler(this);
 
     this.shader = gl.checkUpdateShader(this, getVertexShader(), getFragmentShader());
 
@@ -198,7 +198,7 @@ export class BeatGridEditor {
   updateLines(skipUpdate = false) {
     const gl = this.gl;
     // TODO size is multiple check for more then 1000 points
-    const data = this.pointData = new Float32Array(Math.ceil(this.lines.length * 4.0 / 4096) * 4096);
+    const data = this.lineData = new Float32Array(Math.ceil(this.lines.length * 4.0 / 4096) * 4096);
     let ofs = 0;
     for (const line of this.lines) {
       data[ofs++] = (line.time / this.duration) * 2.0 - 1.0;
@@ -212,108 +212,94 @@ export class BeatGridEditor {
   }
 
   handleClick(x, y) {
-    if (this.selectedLineIx !== -1) {
-      // Done in mouse down now
-      // this.createNewPoint(x,y);
-      this.lastClickTime = undefined;
-    } else if (this.selectedPointIx !== -1) {
+    if (this.selectedPointIx !== -1) {
       let newClickTime = performance.now();
       if (this.lastClickTime && ((newClickTime - this.lastClickTime) < 400)) {
-        this.lines.splice(this.selectedPointIx, 1);
+        // this.points.splice(this.selectedPointIx, 1);
         this.updateLines();
       }
       this.lastClickTime = newClickTime;
     } else {
+      // this.oldClick(x, y);
       this.lastClickTime = undefined;
-    }
-    return false;
-  }
-  
-  handleDown(x,y) {
-    this.updateSelect(x,y);
-    if (this.selectedLineIx !== -1) {
-      this.mouseDownOnPoint = {x,y};
-      //this.pointData[this.selectedLineIx * 4 + 2] = 1.0;
-      this.lineInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.pointData, this.lineInfo);
       return false;
     }
     return true;
   }
-  handleMove(x,y) {
+  
+  handleDown(x,y) {
+    this.updateSelect(x,y);
+    if (this.selectedPointIx > 0) {
+      this.mouseDownOnPoint = {x,y};
+      this.mouseDownLineTime = this.lines[this.selectedPointIx].time;
+      this.lineData[this.selectedPointIx * 4 + 3] = 100.0;
+      this.lineInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.lineData, this.lineInfo);
+      return true;
+    }
+    return this.selectedPointIx !== -1;
+  }
+
+  handleLeave(x, y) {
+    this.updateSelect(-1,-1);
+    this.lineInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.lineData, this.lineInfo);
+  }
+  
+  handleMove(x, y) {
     if (this.mouseDownOnPoint) {
       let dx = this.mouseDownOnPoint.x - x;
       let dy = this.mouseDownOnPoint.y - y;
+
+      let newTime = this.mouseDownLineTime - dx * this.duration;
+      this.lines[this.selectedPointIx].time = newTime;
+  
+      this.updateLines(true);
+      this.lineData[this.selectedPointIx * 4 + 3] = 100.0;
     } else {
-      // this.updateSelect(x,y);
+      this.updateSelect(x,y);
     }
-    this.lineInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.pointData, this.lineInfo);
-    return false;
+    this.lineInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.lineData, this.lineInfo);
+    return this.selectedPointIx !== -1;
   }
   handleUp(x,y) {
     this.mouseDownOnPoint = null;
     return false;
   }
-  handleKey(x,y,up) {
+  handleKey(x,y, up) {
     console.log('key', this.control.event);
     this.updateSelect(x,y);
-    this.lineInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.pointData, this.lineInfo);
+    this.lineInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.lineData, this.lineInfo);
     return false;
   }
   updateSelect(x,y) {
-    const pointSize = 20.0;
-    const xOfs = x * 2.0 - 1.0;
-    const yOfs = y * 2.0 - 1.0;
-    const xFact = this.width * this.control.xScale / 2.0;
-    const yFact = this.height * this.control.yScale / 2.0;
+    const pointSize = 10.0;
+    const cd = {
+      xOffset: x * 2.0 - 1.0,
+      yOffset: y * 2.0 - 1.0,
+      xFactor: this.width * this.control.xScale / 2.0,
+      yFactor: this.height * this.control.yScale / 2.0
+    }
+
     let ofs = 0;
     let minDist = pointSize;
     let selectedIx = -1;
     let lineIx = -1;
     let lastSdx = 0.0;
-    while (ofs < this.pointData.length) {
-      const sdx = (this.pointData[ofs] - xOfs) * xFact;
-      const dx = Math.abs(sdx);
-      if (dx < pointSize) {
-        const dy = Math.abs(this.pointData[ofs + 1] - yOfs) * yFact;
-        let dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < minDist) {
-          minDist = dist;
-          selectedIx = ofs / 4;
-        }
+    while (ofs < this.lines.length * 4) {
+      const sdx = (this.lineData[ofs] - cd.xOffset) * cd.xFactor;
+      let dist = Math.abs(sdx);
+      if (dist < minDist) {
+        minDist = dist;
+        selectedIx = ofs / 4;
       }
-      if (lastSdx < 0.0 && sdx > 0.0) {
-        lineIx = ofs / 4;
-      }
-      this.pointData[ofs + 2] = 0.0;
-      this.pointData[ofs + 3] = 0.0;
+      this.lineData[ofs + 3] = 0.0;
       lastSdx = sdx;
       ofs += 4;
     }
+
     this.selectedLineIx = -1;
     if (selectedIx !== -1) {
-      this.pointData[selectedIx * 4 + 2] = 1.0;
-      this.parentElement.style.cursor = 'move';
-    } else {
-      this.parentElement.style.cursor = '';
-      if (lineIx >= 1) {
-        let pax = this.pointData[(lineIx - 1) * 4];
-        let pbx = this.pointData[lineIx * 4];
-        let pay = this.pointData[(lineIx - 1) * 4 + 1];
-        let pby = this.pointData[lineIx * 4 + 1];
-        let lineX = (xOfs - pax) / (pbx - pax);
-        let yVal = (pay * (1.0 - lineX)) + lineX * pby;
-        if (Math.abs(yVal - yOfs) * yFact < pointSize) {
-          this.selectedLineIx = lineIx - 1;
-          this.selectedLineOffset = lineX;
-          if (this.control.event.ctrlKey) {
-            this.parentElement.style.cursor = 'copy';
-          } else {
-            this.parentElement.style.cursor = 'ns-resize';
-            lineX = 2.0;
-          }
-          this.pointData[this.selectedLineIx * 4 + 3] = lineX;
-        }
-      }
+      this.lineData[selectedIx * 4 + 3] = 100.0;
+      this.parentElement.style.cursor = 'ew-resize';
     }
     this.selectedPointIx = selectedIx;
   }

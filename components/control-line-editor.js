@@ -370,21 +370,25 @@ class ControlLineData {
     return false;
   }
   updateSelect(x,y) {
-    const pointSize = 20.0;
-    const xOfs = x * 2.0 - 1.0;
-    const yOfs = y * 2.0 - 1.0;
-    const xFact = this.owner.width * this.control.xScale / 2.0;
-    const yFact = this.owner.height * this.control.yScale / 2.0;
+    const pointSize = 10.0;
+
+    const cd = {
+      xOffset: x * 2.0 - 1.0,
+      yOffset: y * 2.0 - 1.0,
+      xFactor: this.owner.width * this.control.xScale / 2.0,
+      yFactor: this.owner.height * this.control.yScale / 2.0
+    }
+
     let ofs = 0;
     let minDist = pointSize;
     let selectedIx = -1;
     let lineIx = -1;
     let lastSdx = 0.0;
     while (ofs < this.points.length * 4) {
-      const sdx = (this.pointData[ofs] - xOfs) * xFact;
+      const sdx = (this.pointData[ofs] - cd.xOffset) * cd.xFactor;
       const dx = Math.abs(sdx);
       if (dx < pointSize) {
-        const dy = Math.abs(this.pointData[ofs + 1] - yOfs) * yFact;
+        const dy = Math.abs(this.pointData[ofs + 1] - cd.yOffset) * cd.yFactor;
         let dist = Math.sqrt(dx * dx + dy * dy);
         if (dist < minDist) {
           minDist = dist;
@@ -406,13 +410,14 @@ class ControlLineData {
     } else {
       this.owner.parentElement.style.cursor = '';
       if (lineIx >= 1) {
-        let pax = this.pointData[(lineIx - 1) * 4];
+        let lineStartIx = lineIx - 1;
+        let pax = this.pointData[lineStartIx * 4];
+        let pay = this.pointData[lineStartIx * 4 + 1];
         let pbx = this.pointData[lineIx * 4];
-        let pay = this.pointData[(lineIx - 1) * 4 + 1];
         let pby = this.pointData[lineIx * 4 + 1];
-        let lineX = (xOfs - pax) / (pbx - pax);
+        let lineX = (cd.xOffset - pax) / (pbx - pax);
         let yVal = (pay * (1.0 - lineX)) + lineX * pby;
-        if (Math.abs(yVal - yOfs) * yFact < pointSize) {
+        if (Math.abs(yVal - cd.yOffset) * cd.yFactor < pointSize) {
           this.selectedLineIx = lineIx - 1;
           this.selectedLineOffset = lineX;
           if (this.control.event.ctrlKey) {
