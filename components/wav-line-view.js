@@ -150,7 +150,7 @@ export class WavLineView {
       maxXScale: 1000.0
     });
 
-    this.shader = gl.checkUpdateShader(this, getVertexShader(), getFragmentShader());
+    // this.shader = gl.checkUpdateShader(this, getVertexShader(), getFragmentShader());
 
     if (!this.options.noRequestAnimationFrame) {
       animationFrame(this.updateCanvasBound);
@@ -212,8 +212,7 @@ export class WavLineView {
 
   updateCanvas() {
     let gl = this.gl;
-    this.shader = gl.checkUpdateShader(this, getVertexShader(), getFragmentShader());
-    let shader = this.shader;
+    let shader = gl.checkUpdateShader('wav-line', getVertexShader(), getFragmentShader());
   
     if (gl && shader && this.parentElement) {
       this.duration = this.leftSamples.length / this.sampleRate;

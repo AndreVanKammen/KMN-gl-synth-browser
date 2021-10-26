@@ -256,7 +256,7 @@ export class AudioView {
       1, 1,
       1, -1];
     this.vertexBuffer = gl.updateOrCreateFloatArray(0, basic2triangles);
-    gl.checkUpdateShader(this, getVertexShader(), this.webglSynth.getDefaultDefines() + getFragmentShader());
+    // gl.checkUpdateShader('audio-view', getVertexShader(), this.webglSynth.getDefaultDefines() + getFragmentShader());
 
     if (!this.options.noRequestAnimationFrame) {
       animationFrame(this.updateCanvasBound);
@@ -275,7 +275,7 @@ export class AudioView {
     opacity = 1.0) {
     
     let gl = this.gl;
-    let shader = gl.checkUpdateShader(this, getVertexShader(), this.webglSynth.getDefaultDefines() + getFragmentShader());
+    let shader = gl.checkUpdateShader('audio-view', getVertexShader(), this.webglSynth.getDefaultDefines() + getFragmentShader());
 
     if (gl && shader && this.parentElement && this.viewTexture0.texture) {
       
@@ -312,14 +312,14 @@ export class AudioView {
           shader.u.borderColor?.set(bg[0], bg[1], bg[2], bg[3]);
         }
         shader.u.opacity?.set(opacity);
-        shader.u.showBeats?.set(this.showBeats);
+        shader.u.showBeats?.set(this.showBeats?1:0);
         shader.u.frameCount?.set(this.frameCount++);
 
         if (shader.u["LODOffsets[0]"]) {
           gl.uniform1iv(shader.u["LODOffsets[0]"], this.LODOffsets);
         }
         shader.u.LODLevel?.set((this.levelOfDetail));
-        shader.u.rekordBoxColors?.set((this.rekordBoxColors));
+        shader.u.rekordBoxColors?.set((this.rekordBoxColors?1:0));
       
         shader.a.vertexPosition.en();
         shader.a.vertexPosition.set(this.vertexBuffer, 2 /* elements per vertex */);

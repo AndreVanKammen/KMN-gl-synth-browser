@@ -467,7 +467,7 @@ export class ControlLineEditor {
     /** @type {Record<number,ControlLineData>}*/
     this.controlData = {};
 
-    this.shader = gl.checkUpdateShader(this, getVertexShader(), getFragmentShader());
+    // this.shader = gl.checkUpdateShader('control-line',  getVertexShader(), getFragmentShader());
 
     if (!this.options.noRequestAnimationFrame) {
       animationFrame(this.updateCanvasBound);
@@ -501,8 +501,7 @@ export class ControlLineEditor {
 
   updateCanvas() {
     let gl = this.gl;
-    this.shader = gl.checkUpdateShader(this, getVertexShader(), getFragmentShader());
-    let shader = this.shader;
+    let shader = gl.checkUpdateShader('control-line', getVertexShader(), getFragmentShader());
 
     if (gl && shader && this.parentElement) {
 
