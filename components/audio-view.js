@@ -17,7 +17,7 @@ function getVertexShader() {
     uniform float dpr;
 
     void main(void) {
-      vec2 pos = vertexPosition.xy;
+      vec2 pos = vertexPosition.xy * (1. + 3.0 / windowSize / scale);
       textureCoord = (pos + 1.0) * 0.5;
       // Never draw outside the pan zoom area, viewport will handle textureCoord outside
       pos = (pos - position * 2.0 + 1.0) * scale - 1.0;
@@ -180,15 +180,15 @@ function getFragmentShader() {
       clr.r = max(0.0,clr.r-(clr.g+clr.b) * 0.2);
       clr.g = max(0.0,clr.g-clr.b * 0.4);
     }
-    if (fragmentsPerPixel<=0.03) {
-      clr.rgb *= 0.75;
-    }
+    //if (fragmentsPerPixel<=0.03) {
+      clr.rgb *= 0.9;
+    //}
     float a = max(max(clr.r,clr.g),clr.b) * opacity;
     fragColor = vec4(clamp(pow(beatData.rgb / 12.0,vec3(2.0)) + clr.rgb, 0.0,1.0) ,a);
     if (textureCoord.y<0.0) {
       fragColor *= 0.0;
     }
-    vec2 border = smoothstep(0.5-px*2.0,vec2(0.5)-px,abs(textureCoord.xy - vec2(0.5)));
+    vec2 border = smoothstep(0.5-px,vec2(0.5)+px,abs(textureCoord.xy - vec2(0.5)));
     vec4 bgColor = mix(backgroundColor, borderColor, max(border.x, border.y));
     fragColor = bgColor * (1.0-fragColor.a) + fragColor;
   }
@@ -307,6 +307,7 @@ export class AudioView {
         shader.u.dBRange?.set(this.dBRangeMax, this.dBRangeRMS, this.dBRangeEng);
         shader.u.backgroundColor?.set(bg[0], bg[1], bg[2], bg[3]);
         if (this.isSelected) {
+          //opacity = 1.5;
           shader.u.borderColor?.set(border[0], border[1], border[2], border[3]);
         } else {
           shader.u.borderColor?.set(bg[0], bg[1], bg[2], bg[3]);

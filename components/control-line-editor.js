@@ -188,6 +188,7 @@ class ControlLineData {
     this.control = control;
     this.mouseDownOnPoint = null;
     this.onUpdatePointData = null;
+    this.color = colors[this.owner.colorIx++ % colors.length];
   }
 
   /**
@@ -445,6 +446,7 @@ export class ControlLineEditor {
     this.onUpdatePointData = null;
     this.updateDefered = false;
     this.handlePointDataUpdatedBound = this.handlePointDataUpdated.bind(this);
+    this.colorIx = ~~0;
  }
 
   /**
@@ -464,7 +466,7 @@ export class ControlLineEditor {
       maxXScale: 1000.0
     });
 
-    /** @type {Record<number,ControlLineData>}*/
+    /** @type {Record<string,ControlLineData>}*/
     this.controlData = {};
 
     // this.shader = gl.checkUpdateShader('control-line',  getVertexShader(), getFragmentShader());
@@ -524,10 +526,9 @@ export class ControlLineEditor {
         shader.u.dpr?.set(dpr);
         shader.u.duration?.set(this.duration);
 
-        let clrIx = 0;
         for (let key of Object.keys(this.controlData)) {
           let data = this.controlData[key];
-          shader.u.lineColor?.set.apply(this, colors[clrIx++ % colors.length]);// (0.6,0.6,0.6);
+          shader.u.lineColor?.set.apply(this, data.color);// (0.6,0.6,0.6);
           if (shader.u.pointDataTexture) {
             gl.activeTexture(gl.TEXTURE2);
             gl.bindTexture(gl.TEXTURE_2D, data.pointInfo.texture);

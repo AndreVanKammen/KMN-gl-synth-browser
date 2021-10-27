@@ -55,7 +55,7 @@ function getVertexShader() {
     }`
 }
 
-  // The shader that calculates the pixel values for the filled triangles
+// The shader that calculates the pixel values for the filled triangles
 function getFragmentShader() {
   return /*glsl*/`precision highp float;
   precision highp float;
@@ -82,10 +82,10 @@ function getFragmentShader() {
   in vec2 textureCoordScreen;
   out vec4 fragColor;
 
-  const vec4 beatColor = vec4(0.5,0.5,0.5, 0.7);
-  const vec4 barColor = vec4(0.6,0.6,0.6, 0.75);
-  const vec4 bar4Color = vec4(0.75,0.75,0.75, 0.85);
-  const vec4 bar8Color = vec4(0.9,0.9,0.9, 0.95);
+  const vec4 beatColor = vec4(0.50, 0.50, 0.50, 0.70);
+  const vec4 barColor  = vec4(0.60, 0.60, 0.60, 0.75);
+  const vec4 bar4Color = vec4(0.75, 0.75, 0.75, 0.85);
+  const vec4 bar8Color = vec4(0.80, 0.80, 0.80, 0.80);
 
   void main(void) {
     vec4 color = vec4(0.0);
@@ -145,7 +145,7 @@ export class BeatGridLines extends TimeLineBase {
     super(options);
   }
 
-  udateGrid(lines, duration) {
+  updateGrid(lines, duration) {
     this.lines = lines;
     this.duration = duration;
     
