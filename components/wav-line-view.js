@@ -1,6 +1,6 @@
 import WebGLSynth from "../../KMN-gl-synth.js/webgl-synth.js";
 import { animationFrame } from "../../KMN-utils-browser/animation-frame.js";
-import PanZoomControl from "../../KMN-utils-browser/pan-zoom-control.js";
+import PanZoomControl, { ControlHandlerBase } from "../../KMN-utils-browser/pan-zoom-control.js";
 import getWebGLContext from "../../KMN-utils.js/webglutils.js";
 import dataModel from "../../mixer-main/data/dataModel.js";
 
@@ -120,8 +120,10 @@ function getFragmentShader() {
   }
   `
 }
-export class WavLineView {
-  constructor (options) {
+export class WavLineView extends ControlHandlerBase {
+  constructor(options) {
+    super();
+    
     this.options = options;
     this.updateCanvasBound = this.updateCanvas.bind(this);
     this.width  = 10;
@@ -211,6 +213,10 @@ export class WavLineView {
   }
 
   updateCanvas() {
+    if (!this.isVisible) {
+      return
+    }
+
     let gl = this.gl;
     let shader = gl.checkUpdateShader('wav-line', getVertexShader(), getFragmentShader());
   

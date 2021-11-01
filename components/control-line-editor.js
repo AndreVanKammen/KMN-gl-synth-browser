@@ -1,6 +1,6 @@
 import WebGLSynth from "../../KMN-gl-synth.js/webgl-synth.js";
 import { animationFrame } from "../../KMN-utils-browser/animation-frame.js";
-import PanZoomControl, { PanZoomBase, PanZoomParent } from "../../KMN-utils-browser/pan-zoom-control.js";
+import PanZoomControl, { ControlHandlerBase, PanZoomBase, PanZoomParent } from "../../KMN-utils-browser/pan-zoom-control.js";
 import defer from "../../KMN-utils.js/defer.js";
 import getWebGLContext from "../../KMN-utils.js/webglutils.js";
 // 0 1
@@ -175,7 +175,7 @@ function getFragmentShader() {
   `
 }
 
-class ControlLineData {
+class ControlLineData extends ControlHandlerBase {
   /**
    * 
    * @param {ControlLineEditor} owner 
@@ -183,6 +183,8 @@ class ControlLineData {
    * @param {PanZoomBase} control 
    */
   constructor(owner, gl, control) {
+    super();
+
     this.owner = owner;
     this.gl = gl;
     this.control = control;
@@ -436,18 +438,39 @@ class ControlLineData {
 
 
 }
-export class ControlLineEditor {
-  constructor (options) {
+export class ControlLineEditor extends ControlHandlerBase {
+  constructor(options) {
+    super();
     this.options = options;
     this.updateCanvasBound = this.updateCanvas.bind(this);
-    this.width  = 10;
+    this.width = 10;
     this.height = 10;
     this.mouseDownOnPoint = null;
     this.onUpdatePointData = null;
     this.updateDefered = false;
     this.handlePointDataUpdatedBound = this.handlePointDataUpdated.bind(this);
     this.colorIx = ~~0;
- }
+    /** @type {Record<string,ControlLineData>}*/
+    this.controlData = {};
+  }
+
+  set isVisible(x) {
+    if (this._isVisible !== x) {
+      super.isVisible = x
+      for (let cd of Object.values(this.controlData)) {
+        cd.isVisible = x;
+      }
+    }
+  }
+
+  set isEnabled(x) {
+    if (this._isEnabled !== x) {
+      super.isEnabled = x
+      for (let cd of Object.values(this.controlData)) {
+        cd.isEnabled = x;
+      }
+    }
+  }
 
   /**
    * @param {HTMLElement} parentElement
@@ -465,9 +488,6 @@ export class ControlLineEditor {
       minXScale: 1.0,
       maxXScale: 1000.0
     });
-
-    /** @type {Record<string,ControlLineData>}*/
-    this.controlData = {};
 
     // this.shader = gl.checkUpdateShader('control-line',  getVertexShader(), getFragmentShader());
 
@@ -495,6 +515,8 @@ export class ControlLineEditor {
     let data = this.controlData[dataName];
     if (!data) {
       data = new ControlLineData(this, this.gl, this.control);
+      data.isVisible = this._isVisible;
+      data.isEnabled = this._isEnabled;
       this.control.addHandler(data);
       this.controlData[dataName] = data;
     }
@@ -502,6 +524,11 @@ export class ControlLineEditor {
   }
 
   updateCanvas() {
+    // F***** javascript if i use this.isVisible here it references the overriden setter which has no getter so undefined *()&^)*(*&
+    if (!super.isVisible) {
+      return
+    }
+
     let gl = this.gl;
     let shader = gl.checkUpdateShader('control-line', getVertexShader(), getFragmentShader());
 

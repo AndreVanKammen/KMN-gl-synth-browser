@@ -1,13 +1,15 @@
 import { animationFrame } from "../../KMN-utils-browser/animation-frame.js";
-import PanZoomControl from "../../KMN-utils-browser/pan-zoom-control.js";
+import PanZoomControl, { ControlHandlerBase } from "../../KMN-utils-browser/pan-zoom-control.js";
 import getWebGLContext from "../../KMN-utils.js/webglutils.js";
 // 0 1
 // 2
 // 2 1 3 4 
 //   3   5
 
-export class TimeLineBase {
-  constructor (options) {
+export class TimeLineBase extends ControlHandlerBase {
+  constructor(options) {
+    super();
+
     this.options = options;
     this.updateCanvasBound = this.updateCanvas.bind(this);
     this.width  = 10;
@@ -154,6 +156,10 @@ export class TimeLineBase {
   }
 
   updateCanvas() {
+    if (!this.isVisible) {
+      return
+    }
+    
     let gl = this.gl;
     // this.shader = gl.checkUpdateShader(this, getVertexShader(), getFragmentShader());
     let shader = this.getShader();
