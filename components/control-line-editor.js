@@ -27,7 +27,7 @@ function getVertexShader() {
     precision highp float;
     precision highp int;
     
-    #define pointSize 10.0
+    uniform float pointSize;
     in vec2 vertexPosition;
 
     uniform sampler2D pointDataTexture;
@@ -99,6 +99,7 @@ function getFragmentShader() {
   uniform vec2 windowSize;
   uniform float dpr;
   uniform vec3 lineColor;
+  uniform float pointSize;
 
   flat in vec4 lineStart;
   flat in vec4 lineEnd;
@@ -130,9 +131,9 @@ function getFragmentShader() {
     vec3 pointColor = vec3(0.19,0.19,0.9);
     float pointBorderWidth = 0.25 * dpr;
     float lineWidth = 0.25 * dpr;
-    float pointWidth = 4.0 * dpr;
+    float pointWidth = 0.5 * pointSize * dpr;
     if (lineStart.z > 0.0) {
-      pointWidth = 8.0 * dpr;  
+      pointWidth = pointSize * dpr;  
     }
 
     float hasPointBorder = 1.0 - smoothstep(pointBorderWidth, pointBorderWidth + 1.25, abs(pointDist - pointWidth));
@@ -280,6 +281,7 @@ class ControlLineData extends ControlHandlerBase {
       return true;
     }
     if (this.selectedPointIx > 0 || this.selectedLineIx !== -1) {
+      this.captureControl();
       this.mouseDownOnPoint = {x,y};
       this.mouseDownMinTime = 0;
       this.mouseDownMaxTime = this.owner.duration;
@@ -307,6 +309,8 @@ class ControlLineData extends ControlHandlerBase {
     return this.selectedPointIx !== -1 || this.selectedLineIx !== -1;
   }
   handleLeave(x, y) {
+    this.releaseControl();
+    this.blur();
     this.updateSelect(-1,-1);
     this.pointInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.pointData, this.pointInfo);
   }
@@ -360,9 +364,16 @@ class ControlLineData extends ControlHandlerBase {
       this.updateSelect(x,y);
     }
     this.pointInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.pointData, this.pointInfo);
-    return this.selectedPointIx !== -1 || this.selectedLineIx !== -1;
+    let isSelected = this.selectedPointIx !== -1 || this.selectedLineIx !== -1;
+    if (isSelected) {
+      this.focus();
+    } else {
+      this.blur();
+    }
+    return isSelected;
   }
   handleUp(x,y) {
+    this.releaseControl();
     this.mouseDownOnPoint = null;
     return false;
   }
@@ -556,6 +567,11 @@ export class ControlLineEditor extends ControlHandlerBase {
         for (let key of Object.keys(this.controlData)) {
           let data = this.controlData[key];
           shader.u.lineColor?.set.apply(this, data.color);// (0.6,0.6,0.6);
+          if (data._isFocused) {
+            shader.u.pointSize?.set(7.0);
+          } else {
+            shader.u.pointSize?.set(0.0);
+          }
           if (shader.u.pointDataTexture) {
             gl.activeTexture(gl.TEXTURE2);
             gl.bindTexture(gl.TEXTURE_2D, data.pointInfo.texture);

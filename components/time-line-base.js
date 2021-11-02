@@ -82,6 +82,7 @@ export class TimeLineBase extends ControlHandlerBase {
   handleDown(x,y) {
     this.updateSelect(x,y);
     if (this.selectedPointIx >= 0) {
+      this.captureControl();
       this.mouseDownOnPoint = {x,y};
       this.mouseDownLineTime = this.lineData[this.selectedPointIx * 4];
       this.mouseDownOnLine(this.selectedPointIx);
@@ -92,6 +93,7 @@ export class TimeLineBase extends ControlHandlerBase {
   }
 
   handleLeave(x, y) {
+    this.releaseControl();
     this.updateSelect(-1,-1);
     this.lineInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.lineData, this.lineInfo);
   }
@@ -116,6 +118,7 @@ export class TimeLineBase extends ControlHandlerBase {
   handleUp(x, y) {
     this.handleTimeChanged(this.selectedPointIx, this.lineData[this.selectedPointIx * 4]);
     this.mouseDownOnPoint = null;
+    this.releaseControl();
     return false;
   }
 

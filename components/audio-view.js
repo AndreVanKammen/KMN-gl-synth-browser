@@ -17,7 +17,7 @@ function getVertexShader() {
     uniform float dpr;
 
     void main(void) {
-      vec2 pos = vertexPosition.xy * (1. + 3.0 / windowSize / scale);
+      vec2 pos = vertexPosition.xy * (1. + 8.0 / windowSize / scale);
       textureCoord = (pos + 1.0) * 0.5;
       // Never draw outside the pan zoom area, viewport will handle textureCoord outside
       pos = (pos - position * 2.0 + 1.0) * scale - 1.0;
@@ -188,9 +188,12 @@ function getFragmentShader() {
     if (textureCoord.y<0.0) {
       fragColor *= 0.0;
     }
-    vec2 border = smoothstep(0.5-px,vec2(0.5)+px,abs(textureCoord.xy - vec2(0.5)));
+    vec2 edge = abs(textureCoord.xy - vec2(0.5));
+    vec2 border = smoothstep(0.5 + px * 0.15, 0.5 + px * 2.0, edge);
     vec4 bgColor = mix(backgroundColor, borderColor, max(border.x, border.y));
     fragColor = bgColor * (1.0-fragColor.a) + fragColor;
+    border = 1.0-smoothstep(0.5 + px * 2.0, 0.5 + px * 5.0 ,edge);
+    fragColor.a *= min(border.x, border.y);
   }
   `
 }
