@@ -116,7 +116,9 @@ export class TimeLineBase extends ControlHandlerBase {
   }
 
   handleUp(x, y) {
-    this.handleTimeChanged(this.selectedPointIx, this.lineData[this.selectedPointIx * 4]);
+    if (this.selectedPointIx !== -1) {
+      this.handleTimeChanged(this.selectedPointIx, this.lineData[this.selectedPointIx * 4]);
+    }
     this.mouseDownOnPoint = null;
     this.releaseControl();
     return false;
@@ -150,7 +152,9 @@ export class TimeLineBase extends ControlHandlerBase {
     }
 
     if (selectedIx !== -1) {
-      this.parentElement.style.cursor = 'ew-resize';
+      this.setCursor('ew-resize');
+    } else {
+      this.setCursor('');
     }
 
     this.mouseOverLine(this.selectedPointIx, selectedIx);

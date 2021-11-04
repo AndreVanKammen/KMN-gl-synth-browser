@@ -420,9 +420,9 @@ class ControlLineData extends ControlHandlerBase {
     this.selectedLineIx = -1;
     if (selectedIx !== -1) {
       this.pointData[selectedIx * 4 + 2] = 1.0;
-      this.owner.parentElement.style.cursor = 'move';
+      this.setCursor('move');
     } else {
-      this.owner.parentElement.style.cursor = '';
+      this.setCursor('');
       if (lineIx >= 1) {
         let lineStartIx = lineIx - 1;
         let pax = this.pointData[lineStartIx * 4];
@@ -435,9 +435,9 @@ class ControlLineData extends ControlHandlerBase {
           this.selectedLineIx = lineIx - 1;
           this.selectedLineOffset = lineX;
           if (this.control.event.ctrlKey) {
-            this.owner.parentElement.style.cursor = 'copy';
+            this.setCursor('copy');
           } else {
-            this.owner.parentElement.style.cursor = 'ns-resize';
+            this.setCursor('ns-resize');
             lineX = 2.0;
           }
           this.pointData[this.selectedLineIx * 4 + 3] = lineX;
