@@ -134,7 +134,6 @@ export class WavLineView extends ControlHandlerBase {
     this.maxSamples = 64 * 1024;
     this.pointData = new Float32Array(Math.ceil(this.maxSamples * 4.0 / 4096) * 4096);
     this.sampleRate = 44100;
-    this.initDone = false;
     this.onGetAudioTrack = () => null;
   }
 
@@ -219,34 +218,7 @@ export class WavLineView extends ControlHandlerBase {
       if (durationOnScreen < 3.0) {
         this.udatePoints();
     
-        let { w, h, dpr } = gl.updateCanvasSize(this.canvas);
-        // gl.blendFunc(gl.ONE, gl.ZERO);
-        // gl.blendEquationSeparate(gl.MAX, gl.FUNC_ADD);
-
-        let rect;
-        if (doInit) {
-          rect = this.parentElement.getBoundingClientRect();
-        }
-        if (doInit) {
-          gl.viewport(rect.x * dpr, h - (rect.y + rect.height) * dpr, rect.width * dpr, rect.height * dpr);
-          this.width = w = rect.width * dpr;
-          this.height = h = rect.height * dpr;
-
-          if (rect.width && rect.height) {
-            // gl.lineWidth(3.0);
-            // Tell WebGL how to convert from clip space to pixels
-            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-            gl.useProgram(shader);
-            shader.u.windowSize?.set(w, h);
-            shader.u.dpr?.set(dpr);
-            this.initDone = true;
-          } else {
-            this.initDone = false;
-          }
-        } else {
-          this.initDone = true;
-        }
-        if (this.initDone) {
+        if (gl.updateShaderAndSize(this, shader, this.parentElement)) {
           if (shader.u.pointDataTexture) {
             gl.activeTexture(gl.TEXTURE2);
             gl.bindTexture(gl.TEXTURE_2D, this.pointInfo.texture);

@@ -20,7 +20,6 @@ export class TimeLineBase extends ControlHandlerBase {
     this.duration = 10.0;
     this.lineDataLength = 0;
     this.lineData = undefined;
-    this.initDone = false;
   }
 
   /**
@@ -163,7 +162,7 @@ export class TimeLineBase extends ControlHandlerBase {
     this.selectedPointIx = selectedIx;
   }
 
-  updateCanvas(doInit = true) {
+  updateCanvas() {
     if (!this.isVisible) {
       return
     }
@@ -173,29 +172,7 @@ export class TimeLineBase extends ControlHandlerBase {
     let shader = this.getShader();
 
     if (gl && shader && this.parentElement && this.lineDataLength > 0) {
-      if (doInit) {
-        let { w, h, dpr } = gl.updateCanvasSize(this.canvas);
-
-        let rect = this.parentElement.getBoundingClientRect();
-        if (rect.width && rect.height) {
-          gl.viewport(rect.x * dpr, h - (rect.y + rect.height) * dpr, rect.width * dpr, rect.height * dpr);
-          this.width = w = rect.width * dpr;
-          this.height = h = rect.height * dpr;
-
-          // gl.lineWidth(3.0);
-          // Tell WebGL how to convert from clip space to pixels
-          gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-          gl.useProgram(shader);
-          shader.u.windowSize?.set(w, h);
-          shader.u.dpr?.set(dpr);
-          this.initDone = true;
-        } else {
-          this.initDone = false;
-        }
-      } else {
-        this.initDone = true;
-      }
-      if (this.initDone) {
+      if (gl.updateShaderAndSize(this, shader, this.parentElement)) {
         if (shader.u.pointDataTexture) {
           gl.activeTexture(gl.TEXTURE2);
           gl.bindTexture(gl.TEXTURE_2D, this.lineInfo.texture);
