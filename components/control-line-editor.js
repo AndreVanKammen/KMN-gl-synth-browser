@@ -192,6 +192,7 @@ class ControlLineData extends ControlHandlerBase {
     this.mouseDownOnPoint = null;
     this.onUpdatePointData = null;
     this.color = colors[this.owner.colorIx++ % colors.length];
+    this.initDone = false;
   }
 
   /**
@@ -534,7 +535,7 @@ export class ControlLineEditor extends ControlHandlerBase {
     data.setPoints(points, minValue, maxValue);
   }
 
-  updateCanvas() {
+  updateCanvas(doInit = true) {
     // F***** javascript if i use this.isVisible here it references the overriden setter which has no getter so undefined *()&^)*(*&
     if (!super.isVisible) {
       return
@@ -545,23 +546,29 @@ export class ControlLineEditor extends ControlHandlerBase {
 
     if (gl && shader && this.parentElement) {
 
-      let {w, h, dpr} = gl.updateCanvasSize(this.canvas);
+      if (doInit) {
+        let { w, h, dpr } = gl.updateCanvasSize(this.canvas);
 
-      let rect = this.parentElement.getBoundingClientRect();
-      if (rect.width && rect.height) {
-        gl.viewport(rect.x * dpr, h - (rect.y + rect.height) * dpr, rect.width * dpr, rect.height * dpr);
-        this.width  = w = rect.width * dpr;
-        this.height = h = rect.height * dpr;
+        let rect = this.parentElement.getBoundingClientRect();
+        if (rect.width && rect.height) {
+          gl.viewport(rect.x * dpr, h - (rect.y + rect.height) * dpr, rect.width * dpr, rect.height * dpr);
+          this.width = w = rect.width * dpr;
+          this.height = h = rect.height * dpr;
 
-        // gl.lineWidth(3.0);
-        // Tell WebGL how to convert from clip space to pixels
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        gl.useProgram(shader);
-
-        shader.u.windowSize?.set(w,h);
+          // gl.lineWidth(3.0);
+          // Tell WebGL how to convert from clip space to pixels
+          gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+          gl.useProgram(shader);
+          shader.u.windowSize?.set(w, h);
+          shader.u.dpr?.set(dpr);
+          this.initDone = true;
+        } else {
+          this.initDone = false;
+        }
+      }
+      if (this.initDone) {
         shader.u.scale?.set(this.control.xScaleSmooth, this.control.yScaleSmooth);
         shader.u.position?.set(this.control.xOffsetSmooth, this.control.yOffsetSmooth);
-        shader.u.dpr?.set(dpr);
         shader.u.duration?.set(this.duration);
 
         for (let key of Object.keys(this.controlData)) {

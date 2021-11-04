@@ -12,7 +12,7 @@ export class TimeLineBase extends ControlHandlerBase {
 
     this.options = options;
     this.updateCanvasBound = this.updateCanvas.bind(this);
-    this.width  = 10;
+    this.width = 10;
     this.height = 10;
     this.mouseDownOnPoint = null;
     this.beatsPerBar = 4;
@@ -20,6 +20,7 @@ export class TimeLineBase extends ControlHandlerBase {
     this.duration = 10.0;
     this.lineDataLength = 0;
     this.lineData = undefined;
+    this.initDone = false;
   }
 
   /**
@@ -79,11 +80,11 @@ export class TimeLineBase extends ControlHandlerBase {
     return true;
   }
   
-  handleDown(x,y) {
-    this.updateSelect(x,y);
+  handleDown(x, y) {
+    this.updateSelect(x, y);
     if (this.selectedPointIx >= 0) {
       this.captureControl();
-      this.mouseDownOnPoint = {x,y};
+      this.mouseDownOnPoint = { x, y };
       this.mouseDownLineTime = this.lineData[this.selectedPointIx * 4];
       this.mouseDownOnLine(this.selectedPointIx);
       this.lineInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.lineData, this.lineInfo);
@@ -94,7 +95,7 @@ export class TimeLineBase extends ControlHandlerBase {
 
   handleLeave(x, y) {
     this.releaseControl();
-    this.updateSelect(-1,-1);
+    this.updateSelect(-1, -1);
     this.lineInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.lineData, this.lineInfo);
   }
   
@@ -109,7 +110,7 @@ export class TimeLineBase extends ControlHandlerBase {
       
       // this.lineData[this.selectedPointIx * 4 + 3] = 100.0;
     } else {
-      this.updateSelect(x,y);
+      this.updateSelect(x, y);
     }
     this.lineInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.lineData, this.lineInfo);
     return this.selectedPointIx !== -1;
@@ -124,14 +125,14 @@ export class TimeLineBase extends ControlHandlerBase {
     return false;
   }
 
-  handleKey(x,y, up) {
+  handleKey(x, y, up) {
     console.log('key', this.control.event);
-    this.updateSelect(x,y);
+    this.updateSelect(x, y);
     this.lineInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.lineData, this.lineInfo);
     return false;
   }
 
-  updateSelect(x,y) {
+  updateSelect(x, y) {
     const pointSize = 10.0;
     const cd = {
       xOffset: x,
@@ -162,7 +163,7 @@ export class TimeLineBase extends ControlHandlerBase {
     this.selectedPointIx = selectedIx;
   }
 
-  updateCanvas() {
+  updateCanvas(doInit = true) {
     if (!this.isVisible) {
       return
     }
@@ -172,20 +173,27 @@ export class TimeLineBase extends ControlHandlerBase {
     let shader = this.getShader();
 
     if (gl && shader && this.parentElement && this.lineDataLength > 0) {
+      if (doInit) {
+        let { w, h, dpr } = gl.updateCanvasSize(this.canvas);
 
-      let {w, h, dpr} = gl.updateCanvasSize(this.canvas);
+        let rect = this.parentElement.getBoundingClientRect();
+        if (rect.width && rect.height) {
+          gl.viewport(rect.x * dpr, h - (rect.y + rect.height) * dpr, rect.width * dpr, rect.height * dpr);
+          this.width = w = rect.width * dpr;
+          this.height = h = rect.height * dpr;
 
-      let rect = this.parentElement.getBoundingClientRect();
-      if (rect.width && rect.height) {
-        gl.viewport(rect.x * dpr, h - (rect.y + rect.height) * dpr, rect.width * dpr, rect.height * dpr);
-        this.width  = w = rect.width * dpr;
-        this.height = h = rect.height * dpr;
-
-        // gl.lineWidth(3.0);
-        // Tell WebGL how to convert from clip space to pixels
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        gl.useProgram(shader);
-
+          // gl.lineWidth(3.0);
+          // Tell WebGL how to convert from clip space to pixels
+          gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+          gl.useProgram(shader);
+          shader.u.windowSize?.set(w, h);
+          shader.u.dpr?.set(dpr);
+          this.initDone = true;
+        } else {
+          this.initDone = false;
+        }
+      }
+      if (this.initDone) {
         if (shader.u.pointDataTexture) {
           gl.activeTexture(gl.TEXTURE2);
           gl.bindTexture(gl.TEXTURE_2D, this.lineInfo.texture);
@@ -193,10 +201,8 @@ export class TimeLineBase extends ControlHandlerBase {
           gl.activeTexture(gl.TEXTURE0);
         }
   
-        shader.u.windowSize?.set(w,h);
         shader.u.scale?.set(this.control.xScaleSmooth, this.control.yScaleSmooth);
         shader.u.position?.set(this.control.xOffsetSmooth, this.control.yOffsetSmooth);
-        shader.u.dpr?.set(dpr);
         shader.u.beatsPerBar?.set(this.beatsPerBar);
         shader.u.timePerBeat?.set(this.timePerBeat);
         shader.u.duration?.set(this.duration);

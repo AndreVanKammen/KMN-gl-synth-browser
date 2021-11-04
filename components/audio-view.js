@@ -225,6 +225,7 @@ export class AudioView {
     this.showBeats = false;
     this.frameCount = 0;
     this.isSelected = false;
+    this.initDone = false;
   }
 
   /**
@@ -271,6 +272,7 @@ export class AudioView {
   }
 
   updateCanvas(
+    doInit = true,
     xScaleSmooth = this.control.xScaleSmooth, yScaleSmooth = this.control.yScaleSmooth,
     xOffsetSmooth = this.control.xOffsetSmooth, yOffsetSmooth = this.control.yOffsetSmooth,
     bg = [0.1, 0.1, 0.25, 1.0],
@@ -282,24 +284,31 @@ export class AudioView {
 
     if (gl && shader && this.parentElement && this.viewTexture0.texture) {
       
-      let {w, h, dpr} = gl.updateCanvasSize(this.canvas);
+      if (doInit) {
+        let { w, h, dpr } = gl.updateCanvasSize(this.canvas);
 
-      let rect = this.parentElement.getBoundingClientRect();
-      if (this.recordAnalyzeBuffer && rect.width && rect.height) {
-        gl.viewport(rect.x * dpr, h - (rect.y + rect.height) * dpr, rect.width * dpr, rect.height * dpr);
-        w = rect.width * dpr;
-        h = rect.height * dpr;
+        let rect = this.parentElement.getBoundingClientRect();
+        if (this.recordAnalyzeBuffer && rect.width && rect.height) {
+          gl.viewport(rect.x * dpr, h - (rect.y + rect.height) * dpr, rect.width * dpr, rect.height * dpr);
+          w = rect.width * dpr;
+          h = rect.height * dpr;
 
-        // Tell WebGL how to convert from clip space to pixels
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        gl.useProgram(shader);
+          // Tell WebGL how to convert from clip space to pixels
+          gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+          gl.useProgram(shader);
 
+          shader.u.windowSize?.set(w, h);
+          shader.u.dpr?.set(dpr);
+          this.initDone = true;
+        } else {
+          this.initDone = false;
+        }
+      }
+      if (this.initDone) {
         shader.u. playPos?.set(this.onGetPlayPos() * this.durationInFragments);
 
         shader.u.offset?.set(this.dataOffset); // this.webglSynth.processCount);s
         shader.u.durationInFragments?.set(this.durationInFragments);
-        shader.u.windowSize?.set(w, h);
-        shader.u.dpr?.set(dpr);
         shader.u.scale?.set(xScaleSmooth, yScaleSmooth);
         shader.u.position?.set(xOffsetSmooth, yOffsetSmooth);
 

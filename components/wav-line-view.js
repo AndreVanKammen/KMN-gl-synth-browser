@@ -132,6 +132,7 @@ export class WavLineView extends ControlHandlerBase {
     this.leftSamples = new Float32Array();
     this.rightSamples = new Float32Array();
     this.sampleRate = 44100;
+    this.initDone = false;
     this.onGetAudioTrack = () => null;
   }
 
@@ -212,12 +213,13 @@ export class WavLineView extends ControlHandlerBase {
     }
   }
 
-  updateCanvas() {
+  updateCanvas(doInit = true) {
     if (!this.isVisible) {
       return
     }
 
     let gl = this.gl;
+
     let shader = gl.checkUpdateShader('wav-line', getVertexShader(), getFragmentShader());
   
     if (gl && shader && this.parentElement) {
@@ -230,17 +232,28 @@ export class WavLineView extends ControlHandlerBase {
         // gl.blendFunc(gl.ONE, gl.ZERO);
         // gl.blendEquationSeparate(gl.MAX, gl.FUNC_ADD);
 
-        let rect = this.parentElement.getBoundingClientRect();
-        if (rect.width && rect.height) {
+        let rect;
+        if (doInit) {
+          rect = this.parentElement.getBoundingClientRect();
+        }
+        if (doInit) {
           gl.viewport(rect.x * dpr, h - (rect.y + rect.height) * dpr, rect.width * dpr, rect.height * dpr);
           this.width = w = rect.width * dpr;
           this.height = h = rect.height * dpr;
 
-          // gl.lineWidth(3.0);
-          // Tell WebGL how to convert from clip space to pixels
-          gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-          gl.useProgram(shader);
-
+          if (rect.width && rect.height) {
+            // gl.lineWidth(3.0);
+            // Tell WebGL how to convert from clip space to pixels
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+            gl.useProgram(shader);
+            shader.u.windowSize?.set(w, h);
+            shader.u.dpr?.set(dpr);
+            this.initDone = true;
+          } else {
+            this.initDone = false;
+          }
+        }
+        if (this.initDone) {
           if (shader.u.pointDataTexture) {
             gl.activeTexture(gl.TEXTURE2);
             gl.bindTexture(gl.TEXTURE_2D, this.pointInfo.texture);
@@ -248,14 +261,12 @@ export class WavLineView extends ControlHandlerBase {
             gl.activeTexture(gl.TEXTURE0);
           }
 
-          shader.u.windowSize?.set(w, h);
           shader.u.scale?.set(this.control.xScaleSmooth, this.control.yScaleSmooth);
           shader.u.position?.set(this.control.xOffsetSmooth, this.control.yOffsetSmooth);
-          shader.u.dpr?.set(dpr);
           shader.u.duration?.set(this.duration);
           shader.u.startTime?.set(this.startTime / this.duration * 2.0 - 1.0);
           shader.u.timeStep?.set(this.timeStep / this.duration * 2.0);
-          shader.u.lineAlpha?.set(1.0 - Math.pow(Math.max(0.0,durationOnScreen * 5.0-0.5),.2));
+          shader.u.lineAlpha?.set(1.0 - Math.pow(Math.max(0.0, durationOnScreen * 5.0 - 0.5), .2));
     
           gl.drawArrays(gl.TRIANGLES, 0, (this.points.length - 1) * 6.0);
           gl.blendEquationSeparate(gl.FUNC_ADD, gl.FUNC_ADD);
