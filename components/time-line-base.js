@@ -192,6 +192,8 @@ export class TimeLineBase extends ControlHandlerBase {
         } else {
           this.initDone = false;
         }
+      } else {
+        this.initDone = true;
       }
       if (this.initDone) {
         if (shader.u.pointDataTexture) {

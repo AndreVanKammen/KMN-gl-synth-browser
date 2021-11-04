@@ -45,6 +45,7 @@ function getFragmentShader() {
   uniform float durationInFragments;
   uniform float playPos;
   uniform int frameCount;
+  uniform bool showMaxOnly;
 
   uniform vec2 windowSize;
 
@@ -71,16 +72,17 @@ function getFragmentShader() {
 
   vec3 getDataIX0(int ix, int LODLevel) {
     ivec2 point = ivec2(ix % bufferWidth, ix / bufferWidth);
-    vec4 result = (textureCoord.y < 0.5) && (fragmentsPerPixel>0.03)
+    vec4 result = (textureCoord.y < 0.5) && !showMaxOnly //(fragmentsPerPixel>0.03)
                 ? texelFetch(analyzeTexturesLeft,  point, 0)
                 : texelFetch(analyzeTexturesRight,  point, 0);
     return result.wxz;
   }
 
   vec3 getDataIX1(float ix_in, int LODLevel) {
-    if (fragmentsPerPixel<=0.03) {
-      ix_in += .5;
-    }
+    // if (!showMaxOnly) {
+    //   // if (fragmentsPerPixel<=0.03) {
+    //   //ix_in += .5;
+    // }
     // int len = int(ceil(pow(0.5,float(LODLevel)) * durationInFragments));
     int divider = int(pow(2.0, float(LODLevel)));
     int LODOffset = LODOffsets[LODLevel];
@@ -96,7 +98,8 @@ function getFragmentShader() {
     vec3 low = getDataIX0(int(floor(ix)), LODLevel);
     vec3 high = getDataIX0(int(ceil(ix)), LODLevel);
      
-    return mix(low,high,fract(ix * float(fragmentsPerPixel>0.03)));
+    // return mix(low,high,fract(ix * float(fragmentsPerPixel>0.03)));
+    return mix(low,high,fract(ix * float(!showMaxOnly)));
   }
 
   vec3 getDataIX(float ix_in, float LODLevel) {
@@ -113,13 +116,16 @@ function getFragmentShader() {
     vec3 result = getDataIX(ix, clamp(log2(0.5+fragmentsPerPixel*(1.0+LODLevel)),0.01,float(${levelsOfDetail})));
     // result.yz = sqrt(result.yz);
     result.z *= 4.0;
-    if (fragmentsPerPixel>0.03) {
+    // if (fragmentsPerPixel>0.03) {
+    if (!showMaxOnly) {
       result = result / preScale;
       vec3 resultDB = clamp(
         (dBRange + (20.0 * log10 * log(0.000001 + result) )) / dBRange,
          0.0, 1.0);
       result = mix(result, resultDB, linearDbMix);
       result = pow(result,quadraticCurve);
+    } else {
+      result.yz *= 0.0;
     }
     return result;
   }
@@ -226,6 +232,7 @@ export class AudioView {
     this.frameCount = 0;
     this.isSelected = false;
     this.initDone = false;
+    this.showMaxOnly = false;
   }
 
   /**
@@ -305,7 +312,7 @@ export class AudioView {
         }
       }
       if (this.initDone) {
-        shader.u. playPos?.set(this.onGetPlayPos() * this.durationInFragments);
+        shader.u.playPos?.set(this.onGetPlayPos() * this.durationInFragments);
 
         shader.u.offset?.set(this.dataOffset); // this.webglSynth.processCount);s
         shader.u.durationInFragments?.set(this.durationInFragments);
@@ -327,6 +334,7 @@ export class AudioView {
         shader.u.opacity?.set(opacity);
         shader.u.showBeats?.set(this.showBeats?1:0);
         shader.u.frameCount?.set(this.frameCount++);
+        shader.u.showMaxOnly?.set(~~this.showMaxOnly);
 
         if (shader.u["LODOffsets[0]"]) {
           gl.uniform1iv(shader.u["LODOffsets[0]"], this.LODOffsets);

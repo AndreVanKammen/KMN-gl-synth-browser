@@ -131,6 +131,8 @@ export class WavLineView extends ControlHandlerBase {
     this.mouseDownOnPoint = null;
     this.leftSamples = new Float32Array();
     this.rightSamples = new Float32Array();
+    this.maxSamples = 64 * 1024;
+    this.pointData = new Float32Array(Math.ceil(this.maxSamples * 4.0 / 4096) * 4096);
     this.sampleRate = 44100;
     this.initDone = false;
     this.onGetAudioTrack = () => null;
@@ -179,38 +181,27 @@ export class WavLineView extends ControlHandlerBase {
       return;
     }
 
-    let points = this.points = [];
     let wavLeft = this.leftSamples;
     let wavRight = this.rightSamples;
 
     this.timeStep = 1.0 / this.sampleRate;
 
-    let sampleCount = ~~Math.ceil(this.sampleRate / 6.0) * 2.0;
+    let sampleCount = this.maxSamples;
     let startSample = ~~Math.round((screenStartTime + 0.5 * durationOnScreen) * this.sampleRate) - sampleCount / 2;
     this.startTime = startSample / this.sampleRate;
     this.endTime = (startSample+sampleCount) / this.sampleRate;
     
-    for (let ix = startSample; ix < startSample + sampleCount; ix++) {
-      points.push(0.5* (wavLeft[ix] + wavRight[ix]));
+    const data = this.pointData
+    let ofs = 1;
+    this.pointsLength = sampleCount;
+    for (let ix = startSample; ix < startSample + this.pointsLength; ix++) {
+      // data[ofs++] = 0.0;
+      data[ofs] = 0.5* (wavLeft[ix] + wavRight[ix]);
+      // data[ofs++] = 0; // use for hover and stuff
+      // data[ofs++] = 0;
+      ofs += 4;
     }
-    
-    this.updatePointData();
-  }
-
-  updatePointData(skipUpdate = false) {
-    const gl = this.gl;
-    // TODO size is multiple check for more then 1000 points
-    const data = this.pointData = new Float32Array(Math.ceil(this.points.length * 4.0 / 4096) * 4096);
-    let ofs = 0;
-    for (const point of this.points) {
-      data[ofs++] = 0.0;
-      data[ofs++] = point;
-      data[ofs++] = 0; // use for hover and stuff
-      data[ofs++] = 0;
-    }
-    if (!skipUpdate) {
-      this.pointInfo = gl.createOrUpdateFloat32TextureBuffer(data, this.pointInfo, 0, ofs);
-    }
+    this.pointInfo = this.gl.createOrUpdateFloat32TextureBuffer(data, this.pointInfo);//, 0, this.pointsLength * 4);
   }
 
   updateCanvas(doInit = true) {
@@ -225,7 +216,7 @@ export class WavLineView extends ControlHandlerBase {
     if (gl && shader && this.parentElement) {
       this.duration = this.leftSamples.length / this.sampleRate;
       let durationOnScreen = this.duration / this.control.xScale;
-      if (durationOnScreen < 0.25) {
+      if (durationOnScreen < 3.0) {
         this.udatePoints();
     
         let { w, h, dpr } = gl.updateCanvasSize(this.canvas);
@@ -252,6 +243,8 @@ export class WavLineView extends ControlHandlerBase {
           } else {
             this.initDone = false;
           }
+        } else {
+          this.initDone = true;
         }
         if (this.initDone) {
           if (shader.u.pointDataTexture) {
@@ -266,9 +259,9 @@ export class WavLineView extends ControlHandlerBase {
           shader.u.duration?.set(this.duration);
           shader.u.startTime?.set(this.startTime / this.duration * 2.0 - 1.0);
           shader.u.timeStep?.set(this.timeStep / this.duration * 2.0);
-          shader.u.lineAlpha?.set(1.0 - Math.pow(Math.max(0.0, durationOnScreen * 5.0 - 0.5), .2));
+          shader.u.lineAlpha?.set(1.0);// - Math.pow(Math.max(0.0, durationOnScreen * 15.0 - 0.5), .2));
     
-          gl.drawArrays(gl.TRIANGLES, 0, (this.points.length - 1) * 6.0);
+          gl.drawArrays(gl.TRIANGLES, 0, (this.pointsLength - 1) * 6.0);
           gl.blendEquationSeparate(gl.FUNC_ADD, gl.FUNC_ADD);
         }
       }

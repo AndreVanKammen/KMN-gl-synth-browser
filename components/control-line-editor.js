@@ -565,6 +565,8 @@ export class ControlLineEditor extends ControlHandlerBase {
         } else {
           this.initDone = false;
         }
+      } else {
+        this.initDone = true;
       }
       if (this.initDone) {
         shader.u.scale?.set(this.control.xScaleSmooth, this.control.yScaleSmooth);
