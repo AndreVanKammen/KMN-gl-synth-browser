@@ -211,7 +211,7 @@ export class AudioView {
     this.updateCanvasBound = this.updateCanvas.bind(this);
     this.dataOffset = 0;
     this.durationInFragments = 1000;
-    this.onGetPlayPos = () => -1;
+    this.onGetPlayPos = (sender) => -1;
 
     this.preScaleMax = 1.0;
     this.preScaleRMS = 1.0;
@@ -289,7 +289,7 @@ export class AudioView {
 
     if (gl && shader && this.parentElement && this.viewTexture0.texture && this.recordAnalyzeBuffer) {
       if (gl.updateShaderAndSize(this, shader, this.parentElement)) {
-        shader.u.playPos?.set(this.onGetPlayPos() * this.durationInFragments);
+        shader.u.playPos?.set(this.onGetPlayPos(this) * this.durationInFragments);
 
         shader.u.offset?.set(this.dataOffset); // this.webglSynth.processCount);s
         shader.u.durationInFragments?.set(this.durationInFragments);
