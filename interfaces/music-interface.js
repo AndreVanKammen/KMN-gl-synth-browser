@@ -57,8 +57,9 @@ export class MusicInterface {
    * Synchronize the time with the synth
    * @param {string} timeZone Identifier for the time of this device also used as device id
    * @param {number} time Time in seconds
+   * @param {boolean} thight Don't reserver extra time to fill the buffer
    */
-  syncTime = (timeZone, time) => {
+  syncTime = (timeZone, time, thight = false) => {
     console.error('Music syncTime not implemented!')
   }
   /**
