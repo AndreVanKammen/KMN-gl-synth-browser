@@ -134,7 +134,7 @@ export class WavLineView extends ControlHandlerBase {
     this.maxSamples = 64 * 1024;
     this.pointData = new Float32Array(Math.ceil(this.maxSamples * 4.0 / 4096) * 4096);
     this.sampleRate = 44100;
-    this.onGetAudioTrack = () => null;
+    this.onGetAudioTrack = (sender) => null;
   }
 
   /**
@@ -164,7 +164,7 @@ export class WavLineView extends ControlHandlerBase {
   udatePoints() {
 
     if (this.leftSamples.length === 0) {
-      let track = this.onGetAudioTrack();
+      let track = this.onGetAudioTrack(this);
       if (track) {
         this.leftSamples = track.leftSamples;
         this.rightSamples = track.rightSamples;

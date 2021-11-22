@@ -140,7 +140,7 @@ function getFragmentShader() {
   `
 }
 
-export class BeatGridLines extends TimeLineBase {
+export class BeatGridEditor extends TimeLineBase {
   constructor(options) {
     super(options);
   }
