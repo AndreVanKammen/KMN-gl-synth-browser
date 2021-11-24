@@ -218,7 +218,7 @@ class ControlLineData extends ControlHandlerBase {
   updatePointData(skipUpdate = false) {
     const gl = this.gl;
     // TODO size is multiple check for more then 1000 points
-    const data = this.pointData = new Float32Array(Math.ceil(this.points.length * 4.0 / 4096) * 4096);
+    const data = this.pointData = new Float32Array(Math.ceil((this.points.length + 1) * 4.0 / 4096) * 4096);
     let ofs = 0;
     for (const point of this.points) {
       data[ofs++] = (point.time / this.owner.duration) * 2.0 - 1.0;
@@ -226,7 +226,12 @@ class ControlLineData extends ControlHandlerBase {
       data[ofs++] = 0; // use for hover and stuff
       data[ofs++] = 0;
     }
-    if (!skipUpdate) {
+    // Copy last points data
+    data[ofs++] = data[ofs - 5];
+    data[ofs++] = data[ofs - 5];
+    data[ofs++] = data[ofs - 5];
+    data[ofs++] = data[ofs - 5];
+  if (!skipUpdate) {
       this.pointInfo = gl.createOrUpdateFloat32TextureBuffer(data, this.pointInfo, 0, ofs);
     }
     if (this.owner.onUpdatePointData) {
@@ -261,9 +266,12 @@ class ControlLineData extends ControlHandlerBase {
       this.lastClickTime = newClickTime;
     } else if (this.selectedPointIx !== -1) {
       let newClickTime = performance.now();
-      if (this.lastClickTime && ((newClickTime - this.lastClickTime) < 400)) {
-        this.points.splice(this.selectedPointIx, 1);
-        this.updatePointData();
+      // Don't delete 1st or last point
+      if (this.selectedPointIx !== 0 && this.selectedPointIx < this.points.length-1) {
+        if (this.lastClickTime && ((newClickTime - this.lastClickTime) < 400)) {
+          this.points.splice(this.selectedPointIx, 1);
+          this.updatePointData();
+        }
       }
       this.lastClickTime = newClickTime;
     } else {
@@ -280,13 +288,15 @@ class ControlLineData extends ControlHandlerBase {
       this.createNewPoint(x,y);
       return true;
     }
-    if (this.selectedPointIx > 0 || this.selectedLineIx !== -1) {
+    if (this.selectedPointIx >= 0 || this.selectedLineIx !== -1) {
       this.captureControl();
       this.mouseDownOnPoint = {x,y};
       this.mouseDownMinTime = 0;
       this.mouseDownMaxTime = this.owner.duration;
-      if (this.selectedPointIx > 0) {
-        this.mouseDownMinTime = this.points[this.selectedPointIx-1].time;
+      if (this.selectedPointIx >= 0) {
+        if (this.selectedPointIx > 0) {
+          this.mouseDownMinTime = this.points[this.selectedPointIx - 1].time;
+        }
       
         if (this.selectedPointIx < this.points.length - 1) {
           this.mouseDownMaxTime = this.points[this.selectedPointIx+1].time;
@@ -349,6 +359,9 @@ class ControlLineData extends ControlHandlerBase {
         this.pointData[this.selectedLineIx * 4 + 3] = 2.0;
         this.pointData[this.selectedLineIx * 4 + 6] = 1.0;
       } else {
+        if (this.selectedPointIx === 0 || this.selectedPointIx >= this.points.length - 1) {
+          dx = 0;
+        }
         let newTime = this.mouseDownTime - dx * this.owner.duration;
         newTime = Math.min(Math.max(newTime, this.mouseDownMinTime),this.mouseDownMaxTime);
         this.points[this.selectedPointIx].time = newTime;
@@ -563,7 +576,7 @@ export class ControlLineEditor extends ControlHandlerBase {
             gl.uniform1i(shader.u.pointDataTexture, 2);
             gl.activeTexture(gl.TEXTURE0);
           }
-          gl.drawArrays(gl.TRIANGLES, 0, (data.points.length - 1) * 6.0);
+          gl.drawArrays(gl.TRIANGLES, 0, (data.points.length) * 6.0);
         }
       }
     }
