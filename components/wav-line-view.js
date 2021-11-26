@@ -115,7 +115,7 @@ function getFragmentShader() {
     float lineWidth = 0.02 * dpr;
     float hasLine = 1.0 - smoothstep(lineWidth, lineWidth + 1.5 * dpr, lineDist);
 
-    color = hasLine * vec4(1.0,1.0,1.0,lineAlpha);
+    color = hasLine * vec4(1.0,1.0,1.0,lineAlpha) * lineStart.w;
     fragColor = vec4(pow(color.rgb,vec3(1.0/2.2)),color.a);
   }
   `
@@ -126,7 +126,7 @@ export class WavLineView extends ControlHandlerBase {
     
     this.options = options;
     this.updateCanvasBound = this.updateCanvas.bind(this);
-    this.width  = 10;
+    this.width = 10;
     this.height = 10;
     this.mouseDownOnPoint = null;
     this.leftSamples = new Float32Array();
@@ -135,6 +135,8 @@ export class WavLineView extends ControlHandlerBase {
     this.pointData = new Float32Array(Math.ceil(this.maxSamples * 4.0 / 4096) * 4096);
     this.sampleRate = 44100;
     this.onGetAudioTrack = (sender) => null;
+    /** @type {(data: Float32Array, length: number) => void} */
+    this.onAddEnergyLevels = null;
   }
 
   /**
@@ -162,7 +164,6 @@ export class WavLineView extends ControlHandlerBase {
   }
 
   udatePoints() {
-
     if (this.leftSamples.length === 0) {
       let track = this.onGetAudioTrack(this);
       if (track) {
@@ -188,17 +189,31 @@ export class WavLineView extends ControlHandlerBase {
     let sampleCount = this.maxSamples;
     let startSample = ~~Math.round((screenStartTime + 0.5 * durationOnScreen) * this.sampleRate) - sampleCount / 2;
     this.startTime = startSample / this.sampleRate;
-    this.endTime = (startSample+sampleCount) / this.sampleRate;
+    this.endTime = (startSample + sampleCount) / this.sampleRate;
     
+    if (startSample < 0) {
+      sampleCount = Math.max(0, sampleCount + startSample);
+      startSample = 0;
+    }
+    if (startSample + sampleCount > wavLeft.length) {
+      let overflow = startSample + sampleCount - wavLeft.length;
+      sampleCount = Math.max(0, sampleCount - overflow);
+    }
     const data = this.pointData
-    let ofs = 1;
-    this.pointsLength = sampleCount;
-    for (let ix = startSample; ix < startSample + this.pointsLength; ix++) {
-      // data[ofs++] = 0.0;
-      data[ofs] = 0.5* (wavLeft[ix] + wavRight[ix]);
-      // data[ofs++] = 0; // use for hover and stuff
-      // data[ofs++] = 0;
-      ofs += 4;
+    if (sampleCount !== 0) {
+      let ofs = 0;
+      this.pointsLength = sampleCount;
+      for (let ix = startSample; ix < startSample + this.pointsLength; ix++) {
+        data[ofs++] = 0.0;
+        data[ofs++] = 0.5 * (wavLeft[ix] + wavRight[ix]);
+        data[ofs++] = 0; // use for hover and stuff
+        data[ofs++] = 0;
+        // ofs += 4;
+      }
+      console.log('*****************', startSample, this.pointsLength);
+      if (this.onAddEnergyLevels) {
+        this.onAddEnergyLevels(data, this.pointsLength);
+      }
     }
     this.pointInfo = this.gl.createOrUpdateFloat32TextureBuffer(data, this.pointInfo);//, 0, this.pointsLength * 4);
   }
