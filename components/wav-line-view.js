@@ -207,10 +207,9 @@ export class WavLineView extends ControlHandlerBase {
         data[ofs++] = 0.0;
         data[ofs++] = 0.5 * (wavLeft[ix] + wavRight[ix]);
         data[ofs++] = 0; // use for hover and stuff
-        data[ofs++] = 0;
+        data[ofs++] = 1.0;
         // ofs += 4;
       }
-      console.log('*****************', startSample, this.pointsLength);
       if (this.onAddEnergyLevels) {
         this.onAddEnergyLevels(data, this.pointsLength);
       }
