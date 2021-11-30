@@ -175,10 +175,17 @@ export class WavLineView extends ControlHandlerBase {
     this.duration = this.leftSamples.length / this.sampleRate;
     let durationOnScreen = (this.duration / this.control.xScaleSmooth);
     let screenStartTime = this.control.xOffsetSmooth * this.duration;
+
+    if ((this.control.xOffsetSmooth + (1.0 /this.control.xScaleSmooth)) > 1.0) {
+      return false;
+    }
+    if (this.control.xOffsetSmooth > 1.0) {
+      return false;
+    }
     if (screenStartTime > this.startTime &&
       screenStartTime + durationOnScreen < this.endTime) {
       // No need for update
-      return;
+      return true;
     }
 
     let wavLeft = this.leftSamples;
@@ -191,14 +198,14 @@ export class WavLineView extends ControlHandlerBase {
     this.startTime = startSample / this.sampleRate;
     this.endTime = (startSample + sampleCount) / this.sampleRate;
     
-    if (startSample < 0) {
-      sampleCount = Math.max(0, sampleCount + startSample);
-      startSample = 0;
-    }
-    if (startSample + sampleCount > wavLeft.length) {
-      let overflow = startSample + sampleCount - wavLeft.length;
-      sampleCount = Math.max(0, sampleCount - overflow);
-    }
+    // if (startSample < 0) {
+    //   sampleCount = Math.max(0, sampleCount + startSample);
+    //   startSample = 0;
+    // }
+    // if (startSample + sampleCount > wavLeft.length) {
+    //   let overflow = startSample + sampleCount - wavLeft.length;
+    //   sampleCount = Math.max(0, sampleCount - overflow);
+    // }
     const data = this.pointData
     if (sampleCount !== 0) {
       let ofs = 0;
@@ -215,6 +222,7 @@ export class WavLineView extends ControlHandlerBase {
       }
     }
     this.pointInfo = this.gl.createOrUpdateFloat32TextureBuffer(data, this.pointInfo);//, 0, this.pointsLength * 4);
+    return (sampleCount !== 0);
   }
 
   updateCanvas(doInit = true) {
@@ -229,9 +237,7 @@ export class WavLineView extends ControlHandlerBase {
     if (gl && shader && this.parentElement) {
       this.duration = this.leftSamples.length / this.sampleRate;
       let durationOnScreen = this.duration / this.control.xScale;
-      if (durationOnScreen < 3.0) {
-        this.udatePoints();
-    
+      if (durationOnScreen < 3.0 && this.udatePoints()) {
         if (gl.updateShaderAndSize(this, shader, this.parentElement)) {
           if (shader.u.pointDataTexture) {
             gl.activeTexture(gl.TEXTURE2);
