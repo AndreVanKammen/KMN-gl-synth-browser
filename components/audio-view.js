@@ -373,6 +373,24 @@ export class AudioView {
     }
   }
 
+  setTrackBeatMap(viewMap) {
+    // TODO Make this work
+    const gl = this.gl;
+    this.viewMap = viewMap;
+    let len = this.viewMap.length;
+    this.viewMapLength= len * 4;
+    const data = this.viewMapData = new Float32Array(Math.ceil(len * 4.0 / 4096) * 4096);
+    let ofs = 0;
+    for (const line of this.viewMap) {
+      data[ofs++] = line.time.$v;
+      data[ofs++] = line.duration;
+      data[ofs++] = 0;
+      data[ofs++] = 0;
+    }
+
+    this.beatMapInfo = gl.createOrUpdateFloat32TextureBuffer(data, this.beatMapInfo, 0, ofs);
+  }
+
   /**
    * 
    * @param {Float32Array} viewData 
@@ -420,17 +438,17 @@ export class AudioView {
     this.durationInFragments = durationInFragments;
   }
 
-  setBeatData(beatBufferData) {
-    let sourceLen = beatBufferData.length;
-    let modulus = this.webglSynth.bufferWidth * 4;
-    let viewBuf0 = new Float32Array(Math.ceil(sourceLen/modulus) * modulus);
-    viewBuf0.set(beatBufferData);
-    this.beatBuffer = this.gl.createOrUpdateFloat32TextureBuffer(viewBuf0, this.beatBuffer);
-  }
+  // setBeatData(beatBufferData) {
+  //   let sourceLen = beatBufferData.length;
+  //   let modulus = this.webglSynth.bufferWidth * 4;
+  //   let viewBuf0 = new Float32Array(Math.ceil(sourceLen/modulus) * modulus);
+  //   viewBuf0.set(beatBufferData);
+  //   this.beatBuffer = this.gl.createOrUpdateFloat32TextureBuffer(viewBuf0, this.beatBuffer);
+  // }
 
-  setOffsetAndLength(recordAnalyzeBuffer, offset, length) {
-    this.recordAnalyzeBuffer = recordAnalyzeBuffer;
-    this.dataOffset = offset;
-    this.durationInFragments = length;
-  }
+  // setOffsetAndLength(recordAnalyzeBuffer, offset, length) {
+  //   this.recordAnalyzeBuffer = recordAnalyzeBuffer;
+  //   this.dataOffset = offset;
+  //   this.durationInFragments = length;
+  // }
 }
