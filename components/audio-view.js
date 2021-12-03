@@ -252,11 +252,11 @@ export class AudioView {
   }
 
   /**
-   * @param {WebGLSynth} webglSynth 
+   * @param {WebGLSynth} synth 
    */
-  setSynth(webglSynth) {
-    this.webglSynth = webglSynth;
-    const gl = this.gl = webglSynth.gl;
+  setSynth(synth) {
+    this.synth = synth;
+    const gl = this.gl = synth.gl;
 
     // Create two triangles to form a square that covers the whole canvas
     const basic2triangles = [
@@ -272,79 +272,17 @@ export class AudioView {
       animationFrame(this.updateCanvasBound);
     }
 
-    this.viewTexture0 = { bufferWidth: this.webglSynth.bufferWidth };
-    this.viewTexture1 = { bufferWidth: this.webglSynth.bufferWidth };
-    this.beatBuffer = { bufferWidth: this.webglSynth.bufferWidth };
+    this.viewTexture0 = { bufferWidth: this.synth.bufferWidth };
+    this.viewTexture1 = { bufferWidth: this.synth.bufferWidth };
+    this.beatBuffer = { bufferWidth: this.synth.bufferWidth };
   }
 
-  updateCanvas(
-    xScaleSmooth = this.control.xScaleSmooth, yScaleSmooth = this.control.yScaleSmooth,
-    xOffsetSmooth = this.control.xOffsetSmooth, yOffsetSmooth = this.control.yOffsetSmooth,
-    bg = [0.1, 0.1, 0.25, 1.0],
-    border = [0.5, 0.5, 1.0, 1.0],
-    opacity = 1.0) {
-    
-    let gl = this.gl;
-    let shader = gl.checkUpdateShader('audio-view', getVertexShader(), this.webglSynth.getDefaultDefines() + getFragmentShader());
+  getVertexShader() {
+    return getVertexShader();
+  }
 
-    if (gl && shader && this.parentElement && this.viewTexture0.texture && this.recordAnalyzeBuffer) {
-      if (gl.updateShaderAndSize(this, shader, this.parentElement)) {
-        shader.u.playPos?.set(this.onGetPlayPos(this) * this.durationInFragments);
-
-        shader.u.offset?.set(this.dataOffset); // this.webglSynth.processCount);s
-        shader.u.durationInFragments?.set(this.durationInFragments);
-        shader.u.scale?.set(xScaleSmooth, yScaleSmooth);
-        shader.u.position?.set(xOffsetSmooth, yOffsetSmooth);
-
-        // shader.u.removeAvgFromRMS.set(false);
-        shader.u.preScale?.set(      this.preScaleMax,       this.preScaleRMS ,       this.preScaleEng);
-        shader.u.quadraticCurve?.set(this.quadraticCurveMax, this.quadraticCurveRMS , this.quadraticCurveEng);
-        shader.u.linearDbMix?.set(   this.linearDbMixMax,    this.linearDbMixRMS ,    this.linearDbMixEng);
-        shader.u.dBRange?.set(this.dBRangeMax, this.dBRangeRMS, this.dBRangeEng);
-        shader.u.backgroundColor?.set(bg[0], bg[1], bg[2], bg[3]);
-        if (this.isSelected) {
-          //opacity = 1.5;
-          shader.u.borderColor?.set(border[0], border[1], border[2], border[3]);
-        } else {
-          shader.u.borderColor?.set(bg[0], bg[1], bg[2], bg[3]);
-        }
-        shader.u.opacity?.set(opacity);
-        shader.u.showBeats?.set(this.showBeats?1:0);
-        shader.u.frameCount?.set(this.frameCount++);
-        shader.u.showMaxOnly?.set(~~this.showMaxOnly);
-
-        if (shader.u["LODOffsets[0]"]) {
-          gl.uniform1iv(shader.u["LODOffsets[0]"], this.LODOffsets);
-        }
-        shader.u.LODLevel?.set((this.levelOfDetail));
-        shader.u.rekordBoxColors?.set((this.rekordBoxColors?1:0));
-      
-        shader.a.vertexPosition.en();
-        shader.a.vertexPosition.set(this.vertexBuffer, 2 /* elements per vertex */);
-
-        gl.activeTexture(gl.TEXTURE10);
-        gl.bindTexture(gl.TEXTURE_2D, this.recordAnalyzeBuffer.leftTex);
-        gl.uniform1i(shader.u.analyzeTexturesLeft, 10);
-
-        gl.activeTexture(gl.TEXTURE11);
-        gl.bindTexture(gl.TEXTURE_2D, this.recordAnalyzeBuffer.rightTex);
-        gl.uniform1i(shader.u.analyzeTexturesRight, 11);
-        gl.activeTexture(gl.TEXTURE0);
-
-        if (this.beatBuffer.texture) {
-          gl.activeTexture(gl.TEXTURE12);
-          gl.bindTexture(gl.TEXTURE_2D, this.beatBuffer.texture);
-          gl.uniform1i(shader.u.beatTexture, 12);
-        }
-
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-
-        shader.a.vertexPosition.dis();
-      }
-    }
-    if (!this.options.noRequestAnimationFrame) {
-      animationFrame(this.updateCanvasBound);
-    }
+  getFragmentShader() {
+    return getFragmentShader();
   }
 
   _addLODData(target, len) {
@@ -373,24 +311,6 @@ export class AudioView {
     }
   }
 
-  setTrackBeatMap(viewMap) {
-    // TODO Make this work
-    const gl = this.gl;
-    this.viewMap = viewMap;
-    let len = this.viewMap.length;
-    this.viewMapLength= len * 4;
-    const data = this.viewMapData = new Float32Array(Math.ceil(len * 4.0 / 4096) * 4096);
-    let ofs = 0;
-    for (const line of this.viewMap) {
-      data[ofs++] = line.time.$v;
-      data[ofs++] = line.duration;
-      data[ofs++] = 0;
-      data[ofs++] = 0;
-    }
-
-    this.beatMapInfo = gl.createOrUpdateFloat32TextureBuffer(data, this.beatMapInfo, 0, ofs);
-  }
-
   /**
    * 
    * @param {Float32Array} viewData 
@@ -400,7 +320,7 @@ export class AudioView {
     // throw new Error("Method not implemented.");
     const gl = this.gl;
     let sourceLen = ~~(viewData.length/2);
-    let modulus = this.webglSynth.bufferWidth * 4;
+    let modulus = this.synth.bufferWidth * 4;
     // let enlargedViewData = new Float32Array(Math.ceil(viewData.length/modulus) * modulus);
 
     // Make buffers twice as big for levelsOfDetail and add levelsof detail as extra because we round up
@@ -438,17 +358,86 @@ export class AudioView {
     this.durationInFragments = durationInFragments;
   }
 
-  // setBeatData(beatBufferData) {
-  //   let sourceLen = beatBufferData.length;
-  //   let modulus = this.webglSynth.bufferWidth * 4;
-  //   let viewBuf0 = new Float32Array(Math.ceil(sourceLen/modulus) * modulus);
-  //   viewBuf0.set(beatBufferData);
-  //   this.beatBuffer = this.gl.createOrUpdateFloat32TextureBuffer(viewBuf0, this.beatBuffer);
-  // }
+  updateCanvas(
+    xScaleSmooth = this.control.xScaleSmooth, yScaleSmooth = this.control.yScaleSmooth,
+    xOffsetSmooth = this.control.xOffsetSmooth, yOffsetSmooth = this.control.yOffsetSmooth,
+    bg = [0.1, 0.1, 0.25, 1.0],
+    border = [0.5, 0.5, 1.0, 1.0],
+    opacity = 1.0) {
+    
+    const gl = this.gl;
+    const shader = this.shader = gl.checkUpdateShader('audio-view', this.getVertexShader(), this.synth.getDefaultDefines() + this.getFragmentShader());
 
-  // setOffsetAndLength(recordAnalyzeBuffer, offset, length) {
-  //   this.recordAnalyzeBuffer = recordAnalyzeBuffer;
-  //   this.dataOffset = offset;
-  //   this.durationInFragments = length;
-  // }
+    if (gl && shader && this.parentElement && this.viewTexture0.texture && this.recordAnalyzeBuffer) {
+      if (gl.updateShaderAndSize(this, shader, this.parentElement)) {
+        shader.u.playPos?.set(this.onGetPlayPos(this) * this.durationInFragments);
+
+        shader.u.offset?.set(this.dataOffset); // this.webglSynth.processCount);s
+        shader.u.durationInFragments?.set(this.durationInFragments);
+        shader.u.scale?.set(xScaleSmooth, yScaleSmooth);
+        shader.u.position?.set(xOffsetSmooth, yOffsetSmooth);
+
+        // shader.u.removeAvgFromRMS.set(false);
+        shader.u.preScale?.set(      this.preScaleMax,       this.preScaleRMS ,       this.preScaleEng);
+        shader.u.quadraticCurve?.set(this.quadraticCurveMax, this.quadraticCurveRMS , this.quadraticCurveEng);
+        shader.u.linearDbMix?.set(   this.linearDbMixMax,    this.linearDbMixRMS ,    this.linearDbMixEng);
+        shader.u.dBRange?.set(this.dBRangeMax, this.dBRangeRMS, this.dBRangeEng);
+        shader.u.backgroundColor?.set(bg[0], bg[1], bg[2], bg[3]);
+        if (this.isSelected) {
+          //opacity = 1.5;
+          shader.u.borderColor?.set(border[0], border[1], border[2], border[3]);
+        } else {
+          shader.u.borderColor?.set(bg[0], bg[1], bg[2], bg[3]);
+        }
+        shader.u.opacity?.set(opacity);
+        shader.u.showBeats?.set(this.showBeats?1:0);
+        shader.u.frameCount?.set(this.frameCount++);
+        shader.u.showMaxOnly?.set(~~this.showMaxOnly);
+
+        if (shader.u["LODOffsets[0]"]) {
+          gl.uniform1iv(shader.u["LODOffsets[0]"], this.LODOffsets);
+        }
+        shader.u.LODLevel?.set((this.levelOfDetail));
+        shader.u.rekordBoxColors?.set((this.rekordBoxColors?1:0));
+      
+        gl.activeTexture(gl.TEXTURE10);
+        gl.bindTexture(gl.TEXTURE_2D, this.recordAnalyzeBuffer.leftTex);
+        gl.uniform1i(shader.u.analyzeTexturesLeft, 10);
+
+        gl.activeTexture(gl.TEXTURE11);
+        gl.bindTexture(gl.TEXTURE_2D, this.recordAnalyzeBuffer.rightTex);
+        gl.uniform1i(shader.u.analyzeTexturesRight, 11);
+        gl.activeTexture(gl.TEXTURE0);
+
+        if (this.beatBuffer.texture) {
+          gl.activeTexture(gl.TEXTURE12);
+          gl.bindTexture(gl.TEXTURE_2D, this.beatBuffer.texture);
+          gl.uniform1i(shader.u.beatTexture, 12);
+        }
+
+        this.drawFunction();
+        
+        shader.a.vertexPosition.dis();
+      }
+    }
+    if (!this.options.noRequestAnimationFrame) {
+      animationFrame(this.updateCanvasBound);
+    }
+  }
+
+  drawFunction() {
+    const gl = this.gl;
+    this.shader.a.vertexPosition.en();
+    this.shader.a.vertexPosition.set(this.vertexBuffer, 2 /* elements per vertex */);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  }
+
+  setBeatData(beatBufferData) {
+    let sourceLen = beatBufferData.length;
+    let modulus = this.synth.bufferWidth * 4;
+    let viewBuf0 = new Float32Array(Math.ceil(sourceLen/modulus) * modulus);
+    viewBuf0.set(beatBufferData);
+    this.beatBuffer = this.gl.createOrUpdateFloat32TextureBuffer(viewBuf0, this.beatBuffer);
+  }
+
 }

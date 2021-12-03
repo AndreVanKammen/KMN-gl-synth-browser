@@ -1,8 +1,6 @@
-import WebGLSynth from "../../KMN-gl-synth.js/webgl-synth.js";
 import { animationFrame } from "../../KMN-utils-browser/animation-frame.js";
 import PanZoomControl, { ControlHandlerBase } from "../../KMN-utils-browser/pan-zoom-control.js";
 import getWebGLContext from "../../KMN-utils.js/webglutils.js";
-import dataModel from "../../mixer-main/data/dataModel.js";
 
 function getVertexShader() {
   return /*glsl*/`precision highp float;
@@ -169,7 +167,7 @@ export class WavLineView extends ControlHandlerBase {
       if (track) {
         this.leftSamples = track.leftSamples;
         this.rightSamples = track.rightSamples;
-        this.sampleRate = dataModel.synthController.sampleRate;
+        this.sampleRate = track.sampleRate;
       }
     }
     this.duration = this.leftSamples.length / this.sampleRate;
