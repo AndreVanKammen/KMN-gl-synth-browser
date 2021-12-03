@@ -416,8 +416,6 @@ export class AudioView {
         }
 
         this.drawFunction();
-        
-        shader.a.vertexPosition.dis();
       }
     }
     if (!this.options.noRequestAnimationFrame) {
@@ -427,9 +425,11 @@ export class AudioView {
 
   drawFunction() {
     const gl = this.gl;
-    this.shader.a.vertexPosition.en();
-    this.shader.a.vertexPosition.set(this.vertexBuffer, 2 /* elements per vertex */);
+    const shader = this.shader;
+    shader.a.vertexPosition.en();
+    shader.a.vertexPosition.set(this.vertexBuffer, 2 /* elements per vertex */);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    shader.a.vertexPosition.dis();
   }
 
   setBeatData(beatBufferData) {
