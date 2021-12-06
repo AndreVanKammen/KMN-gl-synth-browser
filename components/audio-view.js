@@ -8,7 +8,9 @@ function getVertexShader() {
   return /*glsl*/`
     in vec2 vertexPosition;
     out vec2 textureCoord;
+    out float beatProgress;
     flat out float fragmentsPerPixel;
+    flat out vec2 borderLR;
     
     uniform float durationInFragments;
     uniform vec2 scale;
@@ -21,6 +23,9 @@ function getVertexShader() {
       textureCoord = (pos + 1.0) * 0.5;
       // Never draw outside the pan zoom area, viewport will handle textureCoord outside
       pos = (pos - position * 2.0 + 1.0) * scale - 1.0;
+      // No knowne beatprogress
+      beatProgress = 0.0;
+      borderLR = vec2(0.0,1.0);
       fragmentsPerPixel = durationInFragments / (scale.x * windowSize.x);
       gl_Position = vec4(pos, 0.0, 1.0);
     }`
@@ -35,8 +40,10 @@ function getFragmentShader() {
 
   const float pi = 3.141592653589793;
 
+  in float beatProgress;
   in vec2 textureCoord;
   flat in float fragmentsPerPixel;
+  flat in vec2 borderLR;
   out vec4 fragColor;
 
   uniform vec2 scale;
@@ -194,11 +201,16 @@ function getFragmentShader() {
     if (textureCoord.y<0.0) {
       fragColor *= 0.0;
     }
-    vec2 edge = abs(textureCoord.xy - vec2(0.5));
-    vec2 border = smoothstep(0.5 + px * 0.15, 0.5 + px * 2.0, edge);
-    vec4 bgColor = mix(backgroundColor, borderColor, max(border.x, border.y));
+    fragColor.rgb *= 0.7;
+    vec2 edge = vec2(max(borderLR.x-textureCoord.x, textureCoord.x-borderLR.y),
+                     abs(textureCoord.y - 0.5) - 0.5);
+
+    vec2 border = smoothstep(px * 0.15, px * 2.0, edge);
+    fragColor *= (1.0-border.x);
+    vec4 beatColor = mix(backgroundColor, clamp(backgroundColor * 0.5,0.0,1.0),beatProgress);
+    vec4 bgColor = mix(beatColor, borderColor, max(border.x, border.y));
     fragColor = bgColor * (1.0-fragColor.a) + fragColor;
-    border = 1.0-smoothstep(0.5 + px * 2.0, 0.5 + px * 5.0 ,edge);
+    border = 1.0-smoothstep(px * 2.0, px * 5.0 ,edge);
     fragColor.a *= min(border.x, border.y);
   }
   `
@@ -361,7 +373,7 @@ export class AudioView {
   updateCanvas(
     xScaleSmooth = this.control.xScaleSmooth, yScaleSmooth = this.control.yScaleSmooth,
     xOffsetSmooth = this.control.xOffsetSmooth, yOffsetSmooth = this.control.yOffsetSmooth,
-    bg = [0.1, 0.1, 0.25, 1.0],
+    bg = [0.15, 0.15, 0.35, 1.0],
     border = [0.5, 0.5, 1.0, 1.0],
     opacity = 1.0) {
     
