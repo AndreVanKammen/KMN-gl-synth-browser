@@ -9,7 +9,7 @@ import getWebGLContext from "../../KMN-utils.js/webglutils.js";
 //   3   5
 const colors = [
   [0.9, 0.9, 0.9],
-  [1.0,   0,   0],
+  [1.0, 0.3, 0.0],
   [  0, 0.7,   0],
   [0.8, 0.5,   0],
   [  0, 0.5, 0.8],
