@@ -206,13 +206,13 @@ function getFragmentShader() {
     vec2 edge = vec2(max(borderLR.x-textureCoord.x, textureCoord.x-borderLR.y),
                      abs(textureCoord.y - 0.5) - 0.5);
 
-    vec2 border = smoothstep(px * 0.15, px * 2.0, edge);
+    vec2 border = smoothstep(-px * 2.0, px * 2.0, edge);
     fragColor *= (1.0-border.x);
     vec4 beatColor = mix(backgroundColor, clamp(backgroundColor * 0.5,0.0,1.0),beatProgress);
     beatColor.rg *= 1.0 + highlight * 1.5;
     vec4 bgColor = mix(beatColor, borderColor, max(border.x, border.y));
     fragColor = bgColor * (1.0-fragColor.a) + fragColor;
-    border = 1.0-smoothstep(px * 2.0, px * 5.0 ,edge);
+    border = 1.0-smoothstep(px, px * 4.0,edge);
     fragColor.a *= min(border.x, border.y);
   }
   `
