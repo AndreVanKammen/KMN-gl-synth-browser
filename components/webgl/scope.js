@@ -2,6 +2,8 @@ import { BaseBinding } from "../../../KMN-varstack.js/vars/base.js";
 import { FloatVar } from "../../../KMN-varstack.js/vars/float.js";
 import { ComponentInfo, getElementHash, RectInfo, RectController, baseComponentShaderHeader } from "../../../KMN-varstack-browser/components/webgl/rect-controller.js";
 import { StringVar } from "../../../KMN-varstack.js/vars/string.js";
+import { SynthMixer } from "../../../KMN-gl-synth.js/webgl-synth-data.js";
+import WebGLSynth from "../../../KMN-gl-synth.js/webgl-synth.js";
 
 const scopeShaderHeader = baseComponentShaderHeader + `
 #define volumeScale 1.0
@@ -78,11 +80,133 @@ float getMax() {
   return value.z;
 }
 mat2x4 getEnergy() {
-  vec4 raem = vec4(value.z,0.0,value.zz);
+  vec4 raem = vec4(value.z*0.5,0.0,value.zz*0.5);
   return mat2x4(raem,raem);
 }
 `;
+export class MixerScope {
+  _controller = RectController.geInstance();
+  
+  /** 
+   * @param {HTMLElement} element
+   */
+  constructor(element) {
+    this._element = element;
 
+    this._clipElement = element.$getClippingParent();
+  }
+
+  /**
+   * 
+   * @param {WebGLSynth} synth
+   * @param {SynthMixer} mixer 
+   */
+  setSynthMixer(synth, mixer) {
+    this.synth = synth;
+    this.mixer = mixer;
+    this.isOutput = mixer == null;
+
+    const clipHash = getElementHash(this._clipElement) + ~~mixer?.mixerHash * 65535;
+    this._componentInfo = this._controller.getComponentInfo(clipHash, 'scope', this.updateComponentInfo.bind(this));
+    this._scopeInfo = this._componentInfo.getFreeIndex(this.updateScopeInfo.bind(this))
+  }
+
+  /** @param {ComponentInfo} info */
+  updateComponentInfo(info) {
+    const webGLSynth = this.synth;
+    if (webGLSynth) {
+      let box = this._clipElement.getBoundingClientRect();
+      info.clipRect.x      = box.x;
+      info.clipRect.y      = box.y;
+      info.clipRect.width  = this._clipElement.clientWidth;
+      info.clipRect.height = this._clipElement.clientHeight;
+      info.shaderHeader = webGLSynth.getDefaultDefines() +
+        (this.isOutput
+        ? scopeShaderHeaderOutput 
+          : scopeShaderHeader);
+    }
+    info.onShaderInit = this.handleShaderInit;
+  }
+
+  /**
+   * @param {import("../../../KMN-utils.js/webglutils.js").RenderingContextWithUtils} gl 
+   * @param {import("../../../KMN-utils.js/webglutils.js").WebGLProgramExt} shader 
+   */
+  handleShaderInit = (gl,shader) => {
+    const webGLSynth = this.synth;
+    if (webGLSynth) {
+      // TODO Use the same texture units for the same stuff, could be better and saves calls
+      if (shader.u.sampleTextures0) {
+        gl.activeTexture(gl.TEXTURE4);
+        gl.bindTexture(gl.TEXTURE_2D_ARRAY, webGLSynth.sampleTextures[0].texture);
+        gl.uniform1i( shader.u.sampleTextures0, 4);
+      }
+      if (shader.u.sampleTextures0) {
+        gl.activeTexture(gl.TEXTURE5);
+        gl.bindTexture(gl.TEXTURE_2D_ARRAY, webGLSynth.sampleTextures[1].texture);
+        gl.uniform1i( shader.u.sampleTextures1, 5);
+      }
+      if (shader.u.outputTexture) {
+        gl.activeTexture(gl.TEXTURE6);
+        gl.bindTexture(gl.TEXTURE_2D_ARRAY, webGLSynth.outputTexture.texture);
+        gl.uniform1i( shader.u.outputTexture, 6);
+      }
+      if (shader.u.rms_avg_eng_max_left) {
+        gl.activeTexture(gl.TEXTURE7);
+        gl.bindTexture(gl.TEXTURE_2D, webGLSynth.rmsAvgBuffer.leftTex);
+        gl.uniform1i( shader.u.rms_avg_eng_max_left, 7);
+      }
+      if (shader.u.rms_avg_eng_max_right) {
+        gl.activeTexture(gl.TEXTURE8);
+        gl.bindTexture(gl.TEXTURE_2D, webGLSynth.rmsAvgBuffer.rightTex);
+        gl.uniform1i( shader.u.rms_avg_eng_max_right, 8);
+      }
+    }
+  }
+
+  /**@param {RectInfo} info */
+  updateScopeInfo(info) {
+    let box = this._element.getBoundingClientRect();
+
+    const instrumentMixer = this.mixer;
+    const webGLSynth = this.synth;
+    if (this.isOutput || (instrumentMixer && instrumentMixer.buffers.length)) {
+      info.rect.width  = box.width;
+      info.rect.height = box.height;
+      info.rect.x      = box.x;
+      info.rect.y      = box.y;
+  
+      info.size.centerX = box.width / 2;
+      info.size.centerY = box.height / 2;
+      info.size.width   = box.width;
+      info.size.height  = box.height
+  
+      if (this.isOutput){
+        info.value[2] = webGLSynth.maxLevel;
+      } else {
+        const tli = instrumentMixer.buffers[instrumentMixer.buffers.length-1]
+        // if (this._controller.drawCount% 16 == 0) {
+        //   console.log('scope:',tli.passNr, tli.current)
+        // }
+        info.value[0] = tli.passNr % 2;
+        info.value[1] = tli.current;
+        info.value[2] = 1.0;
+      }
+    } else {
+      info.rect.width  = 0;
+      info.rect.height = 0;
+    }
+  }
+
+  remove() {
+    if (this._scopeInfo) {
+      this._componentInfo.freeRectInfo(this._scopeInfo);
+      this._scopeInfo = undefined;
+    }
+  }
+}
+
+// TODO: Change to make use of MixerScope
 export class Scope extends BaseBinding {
   _controller = RectController.geInstance();
   
