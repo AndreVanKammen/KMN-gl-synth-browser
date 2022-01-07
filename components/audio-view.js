@@ -3,6 +3,11 @@ import { animationFrame } from "../../KMN-utils-browser/animation-frame.js";
 import PanZoomControl from "../../KMN-utils-browser/pan-zoom-control.js";
 
 const levelsOfDetail = 32;
+export const transparentColor = [0.0, 0.0, 0.0, 0.0];
+export const defaultBackgroundColor = [0.15, 0.15, 0.35, 1.0];
+export const defaultBorderColor = transparentColor;
+export const defaultSelectedBackgroundColor = [0.15, 0.15, 0.35, 1.0];
+export const defaultSelectedBorderColor = [0.5, 0.5, 1.0, 1.0];
 
 function getVertexShader() {
   return /*glsl*/`
@@ -241,11 +246,15 @@ export class AudioView {
     this.dBRangeEng = 90.0;
     this.levelOfDetail = 2.7;
     this.rekordBoxColors = false;
-
+    this.backgroundColor = defaultBackgroundColor;
+    this.borderColor = defaultBorderColor;
+    this.selectedBackgroundColor = defaultSelectedBackgroundColor;
+    this.selectedBorderColor = defaultSelectedBorderColor;
+    this.opacity = 1.0
     this.showBeats = false;
     this.frameCount = 0;
-    this.isSelected = false;
     this.showMaxOnly = false;
+    this.isSelected = false;
   }
 
   /**
@@ -374,10 +383,7 @@ export class AudioView {
 
   updateCanvas(
     xScaleSmooth = this.control.xScaleSmooth, yScaleSmooth = this.control.yScaleSmooth,
-    xOffsetSmooth = this.control.xOffsetSmooth, yOffsetSmooth = this.control.yOffsetSmooth,
-    bg = [0.15, 0.15, 0.35, 1.0],
-    border = [0.5, 0.5, 1.0, 1.0],
-    opacity = 1.0) {
+    xOffsetSmooth = this.control.xOffsetSmooth, yOffsetSmooth = this.control.yOffsetSmooth) {
     
     const gl = this.gl;
     const shader = this.shader = gl.checkUpdateShader('audio-view', this.getVertexShader(), this.synth.getDefaultDefines() + this.getFragmentShader());
@@ -396,14 +402,15 @@ export class AudioView {
         shader.u.quadraticCurve?.set(this.quadraticCurveMax, this.quadraticCurveRMS , this.quadraticCurveEng);
         shader.u.linearDbMix?.set(   this.linearDbMixMax,    this.linearDbMixRMS ,    this.linearDbMixEng);
         shader.u.dBRange?.set(this.dBRangeMax, this.dBRangeRMS, this.dBRangeEng);
-        shader.u.backgroundColor?.set(bg[0], bg[1], bg[2], bg[3]);
+        let bg = this.backgroundColor;
+        let border = this.borderColor;
         if (this.isSelected) {
-          //opacity = 1.5;
-          shader.u.borderColor?.set(border[0], border[1], border[2], border[3]);
-        } else {
-          shader.u.borderColor?.set(bg[0], bg[1], bg[2], bg[3]);
+          bg = this.selectedBackgroundColor;
+          border = this.selectedBorderColor;
         }
-        shader.u.opacity?.set(opacity);
+        shader.u.backgroundColor?.set(bg[0], bg[1], bg[2], bg[3]);
+        shader.u.borderColor?.set(border[0], border[1], border[2], border[3]);
+        shader.u.opacity?.set(this.opacity);
         shader.u.showBeats?.set(this.showBeats?1:0);
         shader.u.frameCount?.set(this.frameCount++);
         shader.u.showMaxOnly?.set(~~this.showMaxOnly);
