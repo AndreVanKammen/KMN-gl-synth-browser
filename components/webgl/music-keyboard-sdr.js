@@ -157,7 +157,7 @@ export function /*vec2*/ getKeyNr(/*vec2*/ uv) {
   let keyNr = int(uv[0]) * 12;
   if (keyDist[1] > 0.5) {
     if (blackKeyNr <3.0) {
-      keyNr += 1 +int(floor(blackKeyNr-1.0)) * 2;
+      keyNr += 1 + int(floor(blackKeyNr-1.0)) * 2;
     } else {
       keyNr += int(floor(blackKeyNr)) * 2 - 2;
     }

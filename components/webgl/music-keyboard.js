@@ -3,10 +3,20 @@ import { PointerTracker } from "../../../KMN-utils-browser/pointer-tracker.js";
 import { getKeyNr } from "./music-keyboard-sdr.js";
 import { MusicInterface } from "../../interfaces/music-interface.js";
 
+const musicKeyboardShaderHeader = baseComponentShaderHeader + /*glsl*/`
+
+uniform sampler2D pointDataTexture;
+
+vec4 getNoteData(int noteNr) {
+  return texelFetch(pointDataTexture, ivec2(noteNr, 0), 0);
+}
+
+`;
+
 export class MusicKeyboard {
   _controller = RectController.geInstance();
   
-  /** 
+  /**
    * @param {HTMLElement} element
    */
   constructor(element) {
@@ -22,6 +32,9 @@ export class MusicKeyboard {
     /** @type {MusicInterface} */
     this.music = null;
     this.lastNoteNr = -1;
+
+    this.noteData = new Float32Array(4096);    
+    this.noteTexture = null;
   }
 
   /** @param {ComponentInfo} info */
@@ -31,6 +44,19 @@ export class MusicKeyboard {
     info.clipRect.y = box.y;
     info.clipRect.width = this._clipElement.clientWidth;
     info.clipRect.height = this._clipElement.clientHeight;
+    info.shaderHeader = musicKeyboardShaderHeader;
+    info.onShaderInit = this.handleShaderInit;
+  }
+
+  /**
+   * @param {import("../../../KMN-utils.js/webglutils.js").RenderingContextWithUtils} gl 
+   * @param {import("../../../KMN-utils.js/webglutils.js").WebGLProgramExt} shader 
+   */
+  handleShaderInit = (gl, shader) => {
+    gl.activeTexture(gl.TEXTURE9);
+    this.noteInfo = gl.createOrUpdateFloat32TextureBuffer(this.noteData, this.noteInfo);
+    gl.bindTexture(gl.TEXTURE_2D, this.noteInfo.texture);
+    gl.uniform1i(shader.u.pointDataTexture, 9);
   }
 
   /**@param {RectInfo} info */
