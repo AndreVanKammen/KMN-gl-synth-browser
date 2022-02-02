@@ -1,7 +1,7 @@
 import { ComponentInfo, getElementHash, RectInfo, RectController, baseComponentShaderHeader } from "../../../KMN-varstack-browser/components/webgl/rect-controller.js";
 import { PointerTracker } from "../../../KMN-utils-browser/pointer-tracker.js";
 import { getKeyNr } from "./music-keyboard-sdr.js";
-import { MusicInterface } from "../../interfaces/music-interface.js";
+import { MusicInterface, NoteInterface } from "../../interfaces/music-interface.js";
 
 const musicKeyboardShaderHeader = baseComponentShaderHeader + /*glsl*/`
 
@@ -32,6 +32,9 @@ export class MusicKeyboard {
     /** @type {MusicInterface} */
     this.music = null;
     this.lastNoteNr = -1;
+
+    /** @type {Array<NoteInterface>} */
+    this.notes = [];
 
     this.noteData = new Float32Array(4096);    
     this.noteTexture = null;
@@ -85,10 +88,18 @@ export class MusicKeyboard {
         pt.currentY / box.height]);
       if (noteNr >= 0) {
         if (noteNr !== this.lastNoteNr) {
-          this.music.note(Date.now() / 1000.0, 'soft-kbd', 1, noteNr, 1);
+          const time = Date.now() / 1000.0;
+          if (this.notes[noteNr]) {
+            this.notes[noteNr].release(time, 1.0);
+            this.notes[noteNr] = null;
+          } else {
+            this.notes[noteNr] = this.music.note(time, 'soft-kbd', 1, noteNr, 1);
+          }
           this.lastNoteNr = noteNr;
         }
       }
+    } else {
+      this.lastNoteNr = -1;
     }
 
     // info.value[2] = webGLSynth.maxLevel;
