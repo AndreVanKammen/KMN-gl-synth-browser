@@ -37,8 +37,9 @@ export class MixerFrequencyAnalyzer {
     this.loudnessMap = new Float32Array(synth.bufferWidth * 8);
     const noteDivider = synth.bufferWidth / 128;
     for (let ix = 0; ix < synth.bufferWidth; ix++) {
-      let frequency = getFrequencyForNote(ix / noteDivider);
-      this.loudnessMap[ix * 2] = getVolumeForFrequency(frequency);
+      const frequency = getFrequencyForNote(ix / noteDivider);
+      const volume = getVolumeForFrequency(frequency);
+      this.loudnessMap[ix * 4] = volume;
     }
     this.loudnessInfo = synth.gl.createOrUpdateFloat32TextureBuffer(this.loudnessMap, this.loudnessInfo);
   }
@@ -56,7 +57,7 @@ export class MixerFrequencyAnalyzer {
         webGLSynth.getDefaultDefines()  + scopeShaderHeader + `
 uniform sampler2D loudnessTexture;\n
 vec4 getLoudnesDataData(int pos) {
-  return texelFetch(loudnessTexture, ivec2(pos, 0), 0);
+  return texelFetch(loudnessTexture, ivec2(pos % 1024, pos / 1024), 0);
 }
 `;
     }

@@ -12,13 +12,13 @@ export const loudness40Phons = {
 }
 
 export function getVolumeForFrequency(f) {
-  for (let ix = 0; ix < loudness40Phons.frequencies.length-1; ix++) {
+  for (let ix = 1; ix < loudness40Phons.frequencies.length; ix++) {
     let frequency = loudness40Phons.frequencies[ix];
-    if (f <= frequency) {
-      let nextFrequency = loudness40Phons.frequencies[ix + 1];
-      let n = (f - frequency) / (nextFrequency - frequency);
-      return n * loudness40Phons.volumes[ix + 1] +
-        (1 - n) * loudness40Phons.volumes[ix];
+    if (frequency > f) {
+      let lastFrequency = loudness40Phons.frequencies[ix - 1];
+      let n = (f - lastFrequency) / (frequency - lastFrequency);
+      return n * loudness40Phons.volumes[ix] +
+        (1 - n) * loudness40Phons.volumes[ix - 1];
     }
   }
   return 100.0; // Inaudable
