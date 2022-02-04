@@ -1,11 +1,11 @@
 import { SynthMixer } from "../../../KMN-gl-synth.js/webgl-synth-data.js";
 import WebGLSynth from "../../../KMN-gl-synth.js/webgl-synth.js";
 import { ComponentInfo, getElementHash, RectController, RectInfo } from "../../../KMN-varstack-browser/components/webgl/rect-controller.js";
-import { getFrequencyForNote, getVolumeForFrequency } from "../../urils/frequency-utils.js";
+import { getFloatLoudnessMap, getFrequencyForNote, getVolumeForFrequency } from "../../urils/frequency-utils.js";
 import { scopeShaderHeader } from "./scope.js";
 
 // TODO: Change to make use of MixerScope(Base)
-export class MixerFrequencyAnalyzer {
+export class SpectrumAnalyzer {
   _controller = RectController.geInstance();
   
   /** 
@@ -29,18 +29,12 @@ export class MixerFrequencyAnalyzer {
     this.isOutput = mixer == null;
 
     const clipHash = getElementHash(this._clipElement) + ~~mixer?.mixerHash * 65535;
-    this._componentInfo = this._controller.getComponentInfo(clipHash, 'frequencyAnalyzer', this.updateComponentInfo.bind(this));
+    this._componentInfo = this._controller.getComponentInfo(clipHash, 'spectrumAnalyzer', this.updateComponentInfo.bind(this));
     this._scopeInfo = this._componentInfo.getFreeIndex(this.updateScopeInfo.bind(this))
 
     this.bufferNr = bufferNr;
 
-    this.loudnessMap = new Float32Array(synth.bufferWidth * 8);
-    const noteDivider = synth.bufferWidth / 128;
-    for (let ix = 0; ix < synth.bufferWidth; ix++) {
-      const frequency = getFrequencyForNote(ix / noteDivider);
-      const volume = getVolumeForFrequency(frequency);
-      this.loudnessMap[ix * 4] = volume;
-    }
+    this.loudnessMap = getFloatLoudnessMap(synth.bufferWidth);
     this.loudnessInfo = synth.gl.createOrUpdateFloat32TextureBuffer(this.loudnessMap, this.loudnessInfo);
   }
 

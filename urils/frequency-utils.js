@@ -24,6 +24,30 @@ export function getVolumeForFrequency(f) {
   return 100.0; // Inaudable
 }
 
+
+let floatLoudnessMap = {};
+
+/**
+ * This function creates a loudnessMap with information for note frequencies
+ * it works with the logaritmic note based DFT buffer.
+ * It creates 1 version for every bufferWidth.
+ * @param {Number} bufferWidth The BufferWidth of the synth's DFT buffer
+ * @returns {Float32Array} Contains loudness on every 4th entry so it will end up in the X
+ */
+export function getFloatLoudnessMap(bufferWidth) {
+  if (!floatLoudnessMap[bufferWidth]) {
+    let mp = floatLoudnessMap[bufferWidth] = new Float32Array(bufferWidth * 8);
+    const noteDivider = bufferWidth / 128;
+    for (let ix = 0; ix < bufferWidth; ix++) {
+      const frequency = getFrequencyForNote(ix / noteDivider);
+      const volume = getVolumeForFrequency(frequency);
+      mp[ix * 4] = volume;
+    }
+  }
+  return floatLoudnessMap[bufferWidth];
+}
+
+
 export function getFrequencyForNote(note) {
   return 8.175798915643707 * Math.pow(2.0, note / 12.0);
 }
