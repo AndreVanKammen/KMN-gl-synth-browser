@@ -321,8 +321,10 @@ class ControlLineData extends ControlHandlerBase {
   handleLeave(x, y) {
     this.releaseControl();
     this.blur();
-    this.updateSelect(-1,-1);
-    this.pointInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.pointData, this.pointInfo);
+    this.updateSelect(-1, -1);
+    if (this.pointData) {
+      this.pointInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.pointData, this.pointInfo);
+    }
   }
   
   handleMove(x, y) {
@@ -398,6 +400,11 @@ class ControlLineData extends ControlHandlerBase {
   }
   updateSelect(x,y) {
     const pointSize = 10.0;
+    if (!this.points) {
+      this.selectedLineIx = -1;
+      this.selectedPointIx = -1;
+      return;
+    }
 
     const cd = {
       xOffset: x * 2.0 - 1.0,
