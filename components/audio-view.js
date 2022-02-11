@@ -436,7 +436,9 @@ export class AudioView {
           gl.uniform1i(shader.u.beatTexture, 12);
         }
 
-        this.drawFunction();
+        this.drawFunction(xScaleSmooth, yScaleSmooth,
+          xOffsetSmooth, yOffsetSmooth);
+      
       }
     }
     if (!this.options.noRequestAnimationFrame) {
@@ -444,7 +446,8 @@ export class AudioView {
     }
   }
 
-  drawFunction() {
+  drawFunction(xScaleSmooth, yScaleSmooth,
+    xOffsetSmooth, yOffsetSmooth) {
     const gl = this.gl;
     const shader = this.shader;
     shader.a.vertexPosition.en();

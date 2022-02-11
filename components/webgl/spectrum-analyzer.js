@@ -19,11 +19,12 @@ export class SpectrumAnalyzer {
   }
 
   /**
-   * 
    * @param {WebGLSynth} synth
-   * @param {SynthMixer} mixer 
+   * @param {SynthMixer} mixer
+   * @param {number} bufferNr
+   * @param {boolean} isLog
    */
-  setSynthMixer(synth, mixer, bufferNr) {
+  setSynthMixer(synth, mixer, bufferNr, isLog) {
     this.synth = synth;
     this.mixer = mixer;
     this.isOutput = mixer == null;
@@ -34,8 +35,11 @@ export class SpectrumAnalyzer {
 
     this.bufferNr = bufferNr;
 
-    this.loudnessMap = getLogFloatLoudnessMap(synth.bufferWidth);
-    this.loudnessMap = getLinearFloatLoudnessMap(synth.bufferWidth);
+    if (isLog) {
+      this.loudnessMap = getLogFloatLoudnessMap(synth.bufferWidth);
+    } else {
+      this.loudnessMap = getLinearFloatLoudnessMap(synth.bufferWidth);
+    }
     this.loudnessInfo = synth.gl.createOrUpdateFloat32TextureBuffer(this.loudnessMap, this.loudnessInfo);
   }
 
