@@ -15,6 +15,23 @@ uniform sampler2DArray sampleTextures1;
 uniform sampler2D rms_avg_eng_max_left;
 uniform sampler2D rms_avg_eng_max_right;
 
+vec4 getSample4Hist(float lineX,int historyCount) {
+  int currentBuffer = int(value.y) / bufferHeight; // TODO: Check if bufferHeight is right here?
+  int currentLine = (int(value.y) + historyCount + int(value.w) - int(value.z)) % int(value.w);
+  currentLine = (currentLine + int(value.z)) % bufferHeight;
+  if (int(value.x) == 0) {
+    return texelFetch(sampleTextures0,
+        ivec3(round(lineX * float(bufferWidth)), 
+              currentLine,
+              currentBuffer), 0);
+  } else {
+    return texelFetch(sampleTextures1,
+        ivec3(round(lineX * float(bufferWidth)), 
+              currentLine,
+              currentBuffer), 0);
+  }
+}
+
 vec4 getSample4(float lineX) {
   int currentBuffer = int(value.y) / bufferHeight; // TODO: Check if bufferHeight is right here?
   int currentLine = int(value.y) % bufferHeight;

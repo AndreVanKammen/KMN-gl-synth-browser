@@ -16,6 +16,8 @@ export class SpectrumAnalyzer {
     this._clipElement = element.$getClippingParent();
 
     this.bufferNr = 0;
+    this.opacity = 1.0;
+    //this.opacity = 0.7;
   }
 
   /**
@@ -55,6 +57,7 @@ export class SpectrumAnalyzer {
       info.shaderHeader =
         webGLSynth.getDefaultDefines()  + scopeShaderHeader + `
 uniform sampler2D loudnessTexture;\n
+uniform float opacity;\n
 vec4 getLoudnesDataData(int pos) {
   return texelFetch(loudnessTexture, ivec2(pos % 1024, pos / 1024), 0);
 }
@@ -86,6 +89,9 @@ vec4 getLoudnesDataData(int pos) {
         gl.bindTexture(gl.TEXTURE_2D, this.loudnessInfo.texture);
         gl.uniform1i( shader.u.loudnessTexture, 9);
       }
+      if (shader.u.opacity) {
+        shader.u.opacity.set(this.opacity);
+      }
     }
   }
 
@@ -109,7 +115,8 @@ vec4 getLoudnesDataData(int pos) {
       const tli = instrumentMixer.buffers[this.bufferNr];
       info.value[0] = tli.passNr % 2;
       info.value[1] = tli.current;
-      info.value[2] = 1.0;
+      info.value[2] = tli.start;
+      info.value[3] = tli.count;
     } else {
       info.rect.width  = 0;
       info.rect.height = 0;
