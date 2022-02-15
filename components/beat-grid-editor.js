@@ -85,7 +85,7 @@ function getFragmentShader() {
   const vec4 beatColor = vec4(0.50, 0.50, 0.50, 0.70);
   const vec4 barColor  = vec4(0.60, 0.60, 0.60, 0.75);
   const vec4 bar4Color = vec4(0.75, 0.75, 0.75, 0.85);
-  const vec4 bar8Color = vec4(0.80, 0.80, 0.80, 0.80);
+  const vec4 bar8Color = vec4(0.95, 0.95, 0.95, 0.95);
 
   void main(void) {
     vec4 color = vec4(0.0);
@@ -105,7 +105,7 @@ function getFragmentShader() {
     if ((int(lineInfo.y) % (beatsPerBar * 8)) == 0 && edgeDist < 0.1) {
       pixelsPerLine *= 64.0;
       lineColor = bar8Color;
-      lineWidth = 0.95 * dpr;
+      lineWidth = 1.15 * dpr;
       lineDist = max(lineDist,edgeDist);
     } else if ((int(lineInfo.y) % (beatsPerBar * 4)) == 0 && edgeDist < 0.1) {
       pixelsPerLine *= 16.0;
