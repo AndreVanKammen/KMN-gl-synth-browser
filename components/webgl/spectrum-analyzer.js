@@ -31,9 +31,11 @@ export class SpectrumAnalyzer {
     this.mixer = mixer;
     this.isOutput = mixer == null;
 
-    const clipHash = getElementHash(this._clipElement) + ~~mixer?.mixerHash * 65535;
-    this._componentInfo = this._controller.getComponentInfo(clipHash, 'spectrumAnalyzer', this.updateComponentInfo.bind(this));
-    this._scopeInfo = this._componentInfo.getFreeIndex(this.updateScopeInfo.bind(this))
+    if (!this._componentInfo) {
+      const clipHash = getElementHash(this._clipElement) + ~~mixer?.mixerHash * 65535;
+      this._componentInfo = this._controller.getComponentInfo(clipHash, 'spectrumAnalyzer', this.updateComponentInfo.bind(this));
+      this._scopeInfo = this._componentInfo.getFreeIndex(this.updateScopeInfo.bind(this))
+    }
 
     this.bufferNr = bufferNr;
 
