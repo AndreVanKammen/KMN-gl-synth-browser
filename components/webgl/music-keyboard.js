@@ -88,13 +88,14 @@ export class MusicKeyboard {
         pt.currentY / box.height]);
       if (noteNr >= 0) {
         if (noteNr !== this.lastNoteNr) {
-          const time = Date.now() / 1000.0;
-          if (this.notes[noteNr]) {
-            this.notes[noteNr].release(time, 1.0);
-            this.notes[noteNr] = null;
-          } else {
-            this.notes[noteNr] = this.music.note(time, 'soft-kbd', 1, noteNr, 1);
-          }
+          const time = this.music.getTime('none');//Date.now() / 1000.0;
+          // if (this.notes[noteNr]) {
+          //   this.notes[noteNr].release(time, 1.0);
+          //   this.notes[noteNr] = null;
+          // } else {
+          //   this.notes[noteNr] = this.music.note(time, 'soft-kbd', 1, noteNr, 1);
+          // }
+          this.music.note(time, 'none', 1, noteNr, 1).release(time + 1.0,0);
           this.lastNoteNr = noteNr;
         }
       }

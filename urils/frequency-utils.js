@@ -36,7 +36,7 @@ let logFloatLoudnessMap = {};
  */
 export function getLogFloatLoudnessMap(bufferWidth) {
   if (!logFloatLoudnessMap[bufferWidth]) {
-    let mp = logFloatLoudnessMap[bufferWidth] = new Float32Array(bufferWidth * 8);
+    let mp = logFloatLoudnessMap[bufferWidth] = new Float32Array(bufferWidth * 4);
     const noteDivider = bufferWidth / 128;
     for (let ix = 0; ix < bufferWidth; ix++) {
       const frequency = getFrequencyForNote(ix / noteDivider);
