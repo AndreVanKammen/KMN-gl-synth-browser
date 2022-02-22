@@ -77,3 +77,10 @@ export function getLinearFloatLoudnessMap(bufferWidth) {
 export function getFrequencyForNote(note) {
   return 8.175798915643707 * Math.pow(2.0, note / 12.0);
 }
+
+export function getNoteFromFrequency(frequency) {
+  if (frequency < 8.175798915643707) {
+    return 0;
+  }
+  return (Math.log2(frequency / 8.175798915643707) * 12);
+}
