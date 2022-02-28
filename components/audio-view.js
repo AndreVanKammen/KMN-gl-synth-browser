@@ -180,13 +180,12 @@ function getFragmentShader() {
       if (beatData.a>100.0) {
         beatData.rgb = vec3(beatData.a / 1000.0);
       }
+      beatData.rgb *= pow(clamp(beatData.rgb*0.025,0.0,1.0),vec3(5.0)) * 20.0;
     }
-    beatData.rgb *= pow(clamp(beatData.rgb,0.0,1.0),vec3(0.7))*0.7;
     if (playPos > 0.0) {
-      beatData.rgb *= 0.8;
-      beatData.rgb += (1.0-pow(smoothstep(-0.0,2.0,abs(playDistance)),0.15) + clr.b*0.1) * 14.0;
+      beatData.rgb += (1.0-pow(smoothstep(0.005,2.0,abs(playDistance)),0.1) ) * (0.7+0.3*max(clr.b,clr.r));
     }
-    beatData.rgb *= 1.0-0.8 * smoothstep(0.0,0.2,clr);
+    // beatData.rgb *= 1.0-0.8 * smoothstep(0.0,0.2,clr);
     
     if (rekordBoxColors) {
       vec3 d = clr;
@@ -203,11 +202,11 @@ function getFragmentShader() {
       clr.rgb *= 0.9;
     //}
     float a = max(max(clr.r,clr.g),clr.b) * opacity;
-    fragColor = vec4(clamp(pow(beatData.rgb / 12.0,vec3(2.0)) + clr.rgb, 0.0,1.0) ,a);
+    fragColor = vec4(clamp(beatData.rgb + clr.rgb * 0.7, 0.0,1.0) ,a);
     if (textureCoord.y<0.0) {
       fragColor *= 0.0;
     }
-    fragColor.rgb *= 0.7;
+    //fragColor.rgb *= 0.7;
     vec2 edge = vec2(max(borderLR.x-textureCoord.x, textureCoord.x-borderLR.y),
                      abs(textureCoord.y - 0.5) - 0.5);
 
@@ -216,6 +215,10 @@ function getFragmentShader() {
     vec4 beatColor = mix(backgroundColor, clamp(backgroundColor * 0.5,0.0,1.0),beatProgress);
     beatColor.rg *= 1.0 + highlight * 1.5;
     vec4 bgColor = mix(beatColor, borderColor, max(border.x, border.y));
+    if (showBeats && textureCoord.y<0.1) {
+      bgColor *= 0.0;
+      fragColor.a = 1.0;
+    }
     fragColor = bgColor * (1.0-fragColor.a) + fragColor;
     border = 1.0-smoothstep(px, px * 4.0,edge);
     fragColor.a *= min(border.x, border.y);
