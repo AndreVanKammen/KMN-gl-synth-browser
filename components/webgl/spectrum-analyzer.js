@@ -1,7 +1,7 @@
 import { SynthMixer } from "../../../KMN-gl-synth.js/webgl-synth-data.js";
 import WebGLSynth from "../../../KMN-gl-synth.js/webgl-synth.js";
 import { ComponentInfo, getElementHash, RectController, RectInfo } from "../../../KMN-varstack-browser/components/webgl/rect-controller.js";
-import { getLogFloatLoudnessMap, getFrequencyForNote, getVolumeForFrequency, getLinearFloatLoudnessMap } from "../../urils/frequency-utils.js";
+import { getLogFloatLoudnessMap, getFrequencyForNote, getVolumeForFrequency, getLinearFloatLoudnessMap } from "../../../KMN-gl-synth.js/frequency-utils.js";
 import { scopeShaderHeader } from "./scope.js";
 
 // TODO: Change to make use of MixerScope(Base)
