@@ -127,14 +127,15 @@ export class WavLineView extends ControlHandlerBase {
     this.width = 10;
     this.height = 10;
     this.mouseDownOnPoint = null;
-    this.leftSamples = new Float32Array();
-    this.rightSamples = new Float32Array();
+    this.leftSamples = null;
+    this.rightSamples = null;
     this.maxSamples = 64 * 1024;
     this.pointData = new Float32Array(Math.ceil(this.maxSamples * 4.0 / 4096) * 4096);
     this.sampleRate = 44100;
     this.onGetAudioTrack = (sender) => null;
     /** @type {(data: Float32Array, length: number) => void} */
     this.onAddEnergyLevels = null;
+    this.track = null;
   }
 
   /**
@@ -162,19 +163,25 @@ export class WavLineView extends ControlHandlerBase {
   }
 
   udatePoints() {
-    if (this.leftSamples.length === 0) {
-      let track = this.onGetAudioTrack(this);
-      if (track) {
-        this.leftSamples = track.leftSamples;
-        this.rightSamples = track.rightSamples;
-        this.sampleRate = track.sampleRate;
+    let track = this.onGetAudioTrack(this);
+    if (this.track !== track) {
+      this.track = track;
+      if (!this.track) {
+        return 
+      }
+      this.leftSamples = track.leftSamples;
+      this.rightSamples = track.rightSamples;
+      this.sampleRate = track.sampleRate;
+      if (!this.leftSamples) {
+        return 
       }
     }
+    
     this.duration = this.leftSamples.length / this.sampleRate;
     let durationOnScreen = (this.duration / this.control.xScaleSmooth);
     let screenStartTime = this.control.xOffsetSmooth * this.duration;
 
-    if ((this.control.xOffsetSmooth + (1.0 /this.control.xScaleSmooth)) > 1.0) {
+    if ((this.control.xOffsetSmooth + (1.0 / this.control.xScaleSmooth)) > 1.0) {
       return false;
     }
     if (this.control.xOffsetSmooth > 1.0) {
@@ -226,6 +233,9 @@ export class WavLineView extends ControlHandlerBase {
   updateCanvas(doInit = true) {
     if (!this.isVisible) {
       return
+    }
+    if (!this.leftSamples) {
+      this.udatePoints();
     }
 
     let gl = this.gl;
