@@ -2,7 +2,7 @@ import { TimeLineBase } from "./time-line-base.js";
 
 function getVertexShader() {
   return /*glsl*/`
-    in vec2 vertexPosition;
+    in float vertexPosition;
 
     uniform sampler2D pointDataTexture;
 
@@ -20,20 +20,22 @@ function getVertexShader() {
     out vec2 textureCoordScreen;
 
     void main(void) {
-      int pointIx = gl_VertexID / 6;
+      int vId = int(vertexPosition); // gl_VertexID
+      int pointIx = vId / 6;
 
       lineInfo = texelFetch(pointDataTexture, ivec2(pointIx % 1024, pointIx / 1024), 0);
+      // lineInfo = vec4(float(pointIx)/4.0,float(pointIx),0.0,0.0);
       lineInfo.x /= duration;
 
       vec2 pixelSize = vec2(2.0) / scale / windowSize * dpr;
       pixelSize *= 2.0; // Maximum line width + aliasing
         
-      int subPointIx = gl_VertexID % 6;
+      int subPointIx = vId % 6;
       vec2 pos;
       if (subPointIx == 1 || subPointIx >= 4) {
         pos.x = lineInfo.x - pixelSize.x;
       } else {
-        pos.x = lineInfo.x + pixelSize.x;
+        pos.x = lineInfo.x + pixelSize.x * 20.0;
       }
 
       if (subPointIx <= 1 || subPointIx == 4) {
@@ -134,7 +136,7 @@ function getFragmentShader() {
     float hasLine = 1.0 - smoothstep(lineWidth - 0.15*dpr, lineWidth + 1.5*dpr, lineDist);
 
     color = hasLine * lineColor;
- 
+
     fragColor = color; //vec4(pow(color.rgb,vec3(1.0/2.2)),color.a);
   }
   `

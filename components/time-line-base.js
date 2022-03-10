@@ -42,6 +42,7 @@ export class TimeLineBase extends ControlHandlerBase {
     if (this.options.editable) {
       this.control.addHandler(this);
     }
+    this.vertexBuffer = gl.getVertex_IDWorkaroundBuffer();
 
     // this.shader = gl.checkUpdateShader(this, getVertexShader(), getFragmentShader());
 
@@ -174,9 +175,9 @@ export class TimeLineBase extends ControlHandlerBase {
     if (gl && shader && this.parentElement && this.lineDataLength > 0) {
       if (gl.updateShaderAndSize(this, shader, this.parentElement)) {
         if (shader.u.pointDataTexture) {
-          gl.activeTexture(gl.TEXTURE2);
+          gl.activeTexture(gl.TEXTURE3);
           gl.bindTexture(gl.TEXTURE_2D, this.lineInfo.texture);
-          gl.uniform1i(shader.u.pointDataTexture, 2);
+          gl.uniform1i(shader.u.pointDataTexture, 3);
           gl.activeTexture(gl.TEXTURE0);
         }
   
@@ -186,7 +187,11 @@ export class TimeLineBase extends ControlHandlerBase {
         shader.u.timePerBeat?.set(this.timePerBeat);
         shader.u.duration?.set(this.duration);
 
-        gl.drawArrays(gl.TRIANGLES, 0, (this.lineDataLength / 4) * 6.0);
+        shader.a.vertexPosition.en();
+        shader.a.vertexPosition.set(this.vertexBuffer, 1 /* elements per vertex */);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, (this.lineDataLength / 4) * 6.0);
+        shader.a.vertexPosition.dis();
+        // gl.drawArrays(gl.TRIANGLES, 0, (this.lineDataLength / 4) * 6.0);
       }
     }
     if (!this.options.noRequestAnimationFrame) {
