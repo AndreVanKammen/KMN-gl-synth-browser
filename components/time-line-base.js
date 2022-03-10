@@ -189,7 +189,7 @@ export class TimeLineBase extends ControlHandlerBase {
 
         shader.a.vertexPosition.en();
         shader.a.vertexPosition.set(this.vertexBuffer, 1 /* elements per vertex */);
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, (this.lineDataLength / 4) * 6.0);
+        gl.drawArrays(gl.TRIANGLES, 0, (this.lineDataLength / 4) * 6.0);
         shader.a.vertexPosition.dis();
         // gl.drawArrays(gl.TRIANGLES, 0, (this.lineDataLength / 4) * 6.0);
       }

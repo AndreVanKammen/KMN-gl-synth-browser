@@ -12,6 +12,9 @@ function getVertexShader() {
     uniform float dpr;
     uniform float duration;
 
+    uniform int beatsPerBar;
+    uniform float timePerBeat;
+
     flat out vec4 lineInfo;
 
     flat out float lineXScreen;
@@ -28,14 +31,29 @@ function getVertexShader() {
       lineInfo.x /= duration;
 
       vec2 pixelSize = vec2(2.0) / scale / windowSize * dpr;
-      pixelSize *= 2.0; // Maximum line width + aliasing
-        
+      pixelSize *= 1.0; // Maximum line width + aliasing
+
+      float durationOnScreen = duration / scale.x;
+      float beatsOnSreen = durationOnScreen / timePerBeat;
+      float pixelsPerLine = windowSize.x / beatsOnSreen;
+      if ((int(lineInfo.y) % (beatsPerBar * 8)) == 0) {
+        pixelsPerLine *= 64.0;
+      } else if ((int(lineInfo.y) % (beatsPerBar * 4)) == 0) {
+        pixelsPerLine *= 8.0;
+      } else if ((int(lineInfo.y) % beatsPerBar == 0)) {
+        pixelsPerLine *= 3.0;
+      }
+      if (pixelsPerLine < 24.0) {
+        gl_Position = vec4(-1.0,-1.0,-1.0, 1.0);
+        return;
+      }
+          
       int subPointIx = vId % 6;
       vec2 pos;
       if (subPointIx == 1 || subPointIx >= 4) {
         pos.x = lineInfo.x - pixelSize.x;
       } else {
-        pos.x = lineInfo.x + pixelSize.x * 20.0;
+        pos.x = lineInfo.x + pixelSize.x;
       }
 
       if (subPointIx <= 1 || subPointIx == 4) {
@@ -115,11 +133,12 @@ function getFragmentShader() {
       lineWidth = 0.6 * dpr;
       lineDist = max(lineDist,edgeDist);
     } else if ((int(lineInfo.y) % beatsPerBar == 0 && edgeDist < 0.1)) {
-      pixelsPerLine *= 4.0;
+      pixelsPerLine *= 1.4;
       lineColor = barColor;
       lineWidth = 0.3 * dpr;
       lineDist = max(lineDist,edgeDist);
     } else {
+      pixelsPerLine *= 0.4;
       lineColor = beatColor;
     }
     if (lineInfo.z < 0.0 && edgeDist < 0.1) {
@@ -136,7 +155,6 @@ function getFragmentShader() {
     float hasLine = 1.0 - smoothstep(lineWidth - 0.15*dpr, lineWidth + 1.5*dpr, lineDist);
 
     color = hasLine * lineColor;
-
     fragColor = color; //vec4(pow(color.rgb,vec3(1.0/2.2)),color.a);
   }
   `
