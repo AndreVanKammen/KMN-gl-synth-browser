@@ -129,13 +129,14 @@ export class WavLineView extends ControlHandlerBase {
     this.mouseDownOnPoint = null;
     this.leftSamples = null;
     this.rightSamples = null;
-    this.maxSamples = 64 * 1024;
+    this.maxSamples = this.options.maxSamples || 64 * 1024;
     this.pointData = new Float32Array(Math.ceil(this.maxSamples * 4.0 / 4096) * 4096);
     this.sampleRate = 44100;
-    this.onGetAudioTrack = (sender) => null;
     /** @type {(data: Float32Array, length: number) => void} */
     this.onAddEnergyLevels = null;
     this.track = null;
+    this.durationTreshhold = 3.0;
+    this.onGetAudioTrack = (sender) => this.track;
   }
 
   /**
@@ -163,8 +164,11 @@ export class WavLineView extends ControlHandlerBase {
   }
 
   udatePoints() {
+    if (this.options.skipUpdatePoints) {
+      return true;
+    }
     let track = this.onGetAudioTrack(this);
-    if (this.track !== track) {
+    if (this.track !== track || !this.leftSamples) {
       this.track = track;
       if (!this.track) {
         return 
@@ -175,6 +179,7 @@ export class WavLineView extends ControlHandlerBase {
       if (!this.leftSamples) {
         return 
       }
+      this.duration = this.leftSamples.length / this.sampleRate;
     }
     
     this.duration = this.leftSamples.length / this.sampleRate;
@@ -187,8 +192,8 @@ export class WavLineView extends ControlHandlerBase {
     if (this.control.xOffsetSmooth > 1.0) {
       return false;
     }
-    if (screenStartTime > this.startTime &&
-      screenStartTime + durationOnScreen < this.endTime) {
+    if (screenStartTime >= this.startTime &&
+      screenStartTime + durationOnScreen <= this.endTime) {
       // No need for update
       return true;
     }
@@ -211,7 +216,7 @@ export class WavLineView extends ControlHandlerBase {
     //   let overflow = startSample + sampleCount - wavLeft.length;
     //   sampleCount = Math.max(0, sampleCount - overflow);
     // }
-    const data = this.pointData
+    const data = this.pointData;
     if (sampleCount !== 0) {
       let ofs = 0;
       this.pointsLength = sampleCount;
@@ -243,9 +248,8 @@ export class WavLineView extends ControlHandlerBase {
     let shader = gl.checkUpdateShader('wav-line', getVertexShader(), getFragmentShader());
   
     if (gl && shader && this.parentElement) {
-      this.duration = this.leftSamples.length / this.sampleRate;
       let durationOnScreen = this.duration / this.control.xScale;
-      if (durationOnScreen < 3.0 && this.udatePoints()) {
+      if (durationOnScreen <= this.durationTreshhold && this.udatePoints() && this.pointInfo) {
         if (gl.updateShaderAndSize(this, shader, this.parentElement)) {
           if (shader.u.pointDataTexture) {
             gl.activeTexture(gl.TEXTURE2);
@@ -262,7 +266,6 @@ export class WavLineView extends ControlHandlerBase {
           shader.u.lineAlpha?.set(1.0);// - Math.pow(Math.max(0.0, durationOnScreen * 15.0 - 0.5), .2));
     
           gl.drawArrays(gl.TRIANGLES, 0, (this.pointsLength - 1) * 6.0);
-          gl.blendEquationSeparate(gl.FUNC_ADD, gl.FUNC_ADD);
         }
       }
     }
