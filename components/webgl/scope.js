@@ -256,7 +256,7 @@ export class Scope extends BaseBinding {
   }
 
   handleGetShader() {
-    return this.synthController.webglSynth.getDefaultDefines() + 
+    return this.synthController.webGLSynth.getDefaultDefines() + 
          (this.isOutput
          ? scopeShaderHeaderOutput 
          : scopeShaderHeader) + ComponentShaders['scope'] + baseComponentShaderFooter;
