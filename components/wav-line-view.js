@@ -273,6 +273,7 @@ export class WavLineView extends ControlHandlerBase {
     
           if (this.vertexIDDisabled) {
             shader.a.vertexPosition.en();
+            // @ts-ignore
             shader.a.vertexPosition.set(this.vertexBuffer, 1 /* elements per vertex */);
           }
           gl.drawArrays(gl.TRIANGLES, 0, (this.pointsLength - 1) * 6.0);
