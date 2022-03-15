@@ -1,8 +1,139 @@
 import { SynthMixer } from "../../../KMN-gl-synth.js/webgl-synth-data.js";
 import WebGLSynth from "../../../KMN-gl-synth.js/webgl-synth.js";
-import { ComponentInfo, getElementHash, RectController, RectInfo } from "../../../KMN-varstack-browser/components/webgl/rect-controller.js";
+import { baseComponentShaderFooter, ComponentInfo, getElementHash, RectController, RectInfo } from "../../../KMN-varstack-browser/components/webgl/rect-controller.js";
 import { getLogFloatLoudnessMap, getFrequencyForNote, getVolumeForFrequency, getLinearFloatLoudnessMap } from "../../../KMN-gl-synth.js/frequency-utils.js";
 import { scopeShaderHeader } from "./scope.js";
+
+// "spectrumAnalyzer_analyzer":/*glsl*/`
+// const float log10 = 1.0 / log(10.0);
+
+// vec4 renderComponent(vec2 center, vec2 size) {
+//   vec2 lineClr = vec2(0.0);
+//   for (int ix = -133; ix <= 0; ix++) {
+//     float lineX = (localCoord.x / size.x);
+//     float n = fract(lineX * 128.0);
+//     // if (mod(value.y+ float(ix),2.0) >0.99) {
+//     //   n = 1.0-n;
+//     // }
+//     float scale1 = (float(136+ix) - n)/136.0;
+//     float scale = pow(scale1,2.0);
+
+//     // float lineX = (localCoord.x / size.x) / 2.0 + 0.25;// zoom
+//     lineX = lineX / scale - 0.5 * (1.0-scale);// * scale + 0.5 * (1.0-scale);
+//     //float lineX = (localCoord.x / size.x);
+//     vec4 fftValue = getSample4Hist(lineX, ix);
+//     vec2 sampleValue = vec2(length(fftValue.rg), length(fftValue.ba));
+//     if (ix == 0) {
+//       vec4 fftValue1 = getSample4Hist(lineX, ix - 1);
+//       vec2 sampleValue1 = vec2(length(fftValue1.rg), length(fftValue1.ba));
+//       sampleValue = mix(sampleValue1, sampleValue, n);
+//       scale1 = (float(136+ix))/136.0;
+//       scale = pow(scale1,2.0);
+//     }
+
+//     // sampleValue.xy = vec2(sampleValue.x + sampleValue.y) * 0.5; // Mono
+//     float dBRange = 115.0 - getLoudnesDataData(int(floor(lineX * float(bufferWidth)))).x;
+//     // dBRange *= 0.8;
+//     // sampleValue = (dBRange + (20.0 * log10 * log(0.000001 + sampleValue) )) / dBRange * 0.3;
+//     sampleValue *= pow(10.0,dBRange / 30.0) * 0.07;
+//     sampleValue = clamp(sampleValue, 0.0, 1.0) * scale1;
+//     vec2 dist = vec2(size.y * scale - localCoord.y) - sampleValue * size.y;// + sign(sampleValue));
+//     vec2 lineThickness = pow(sampleValue.xy,vec2(0.3))*size.y * 0.02;
+//     if (ix!=0) {
+//       dist = abs(dist);
+//     } else {
+//       lineThickness = vec2(1.0);
+//     }
+//     lineClr += (1.0-smoothstep(0.7*lineThickness,lineThickness,dist)) * vec2(1.75 / float(-ix + 1)) * (0.2+7.0*sampleValue);
+//   }
+//   vec3 returnClr = clamp(vec3(lineClr, lineClr.x), 0.0, 1.0);
+//   float alpha = smoothstep(0.01, 0.03, max(returnClr.r,max(returnClr.g,returnClr.b))) * opacity;
+//   return vec4(pow(returnClr,vec3(1.0/2.1)), alpha);
+// }`,
+// "spectrumAnalyzer_3D":/*glsl*/`
+// const float log10 = 1.0 / log(10.0);
+
+// vec4 renderComponent(vec2 center, vec2 size) {
+//   vec3 lineClr = vec3(0.0);
+//   for (int ix = -53; ix <= 0; ix++) {
+//     float lineX = (localCoord.x / size.x);
+//     float scale1 = float(56+ix)/56.2;
+//     float scale = pow(scale1,2.0);
+//     float scaleLine = pow(scale1,0.5);
+
+//     lineX = lineX * scaleLine + 0.5 * (1.0 - scaleLine);// * scale + 0.5 * (1.0-scale);
+//     vec4 fftValue = getSample4Hist(lineX, ix);
+//     vec2 sampleValue = vec2(length(fftValue.rg), length(fftValue.ba));
+
+//     float dBRange = 115.0 - getLoudnesDataData(int(floor(lineX * float(bufferWidth)))).x;
+//     float multiplier = pow(10.0,dBRange / 30.0) * 0.04;
+//     sampleValue *= multiplier;
+//     sampleValue = clamp(sampleValue, 0.0, 1.0) * scale1;
+//     vec2 dist = vec2(size.y * scale - localCoord.y) - sampleValue * size.y;// + sign(sampleValue));
+//     vec2 lineThickness = pow(sampleValue.xy,vec2(0.3))*size.y * 0.02 - float(ix)*0.4;
+//     if (ix!=0) {
+//       dist = abs(dist);
+//     } else {
+//       lineThickness = vec2(1.0);
+//     }
+//     vec2 line = (1.0-smoothstep(0.7*lineThickness,lineThickness,dist)) * vec2(1.75 / float(-ix + 1)) * (0.2+7.0*sampleValue);
+//     lineClr.xy += line;
+//     lineClr.z += (fftValue.x + fftValue.z) * multiplier * max(line.x,line.y) * 18.0;
+//   }
+//   vec3 returnClr = clamp(lineClr, 0.0, 1.0);
+//   float alpha = smoothstep(0.01, 0.03, max(returnClr.r,max(returnClr.g,returnClr.b))) * opacity;
+//   return vec4(pow(returnClr,vec3(1.0/2.1)), alpha);
+// }`,
+// "spectrumAnalyzer2Danalyze":/*glsl*/`
+// const float log10 = 1.0 / log(10.0);
+
+// vec4 renderComponent(vec2 center, vec2 size) {
+//   float lineX = (localCoord.x / size.x);
+//   float lineY = localCoord.y / 8.0;
+//   float historyY = fract(lineY);
+//   float historyX = fract(lineX * 256.0+0.5);
+//   lineX = lineX - historyX/256.0 + (historyY/256.0);
+
+//   vec4 fftValue1 = getSample4Hist(lineX, int(-floor(lineY)));
+//   vec4 fftValue2 = getSample4Hist(lineX+ 1.0/256.0, int(-floor(lineY)));
+//   vec2 sampleValue1 = vec2(length(fftValue1.rg), length(fftValue1.ba));
+//   vec2 sampleValue2 = vec2(length(fftValue2.rg), length(fftValue2.ba));
+
+//   vec2 sampleValue = mix(sampleValue1,sampleValue2,historyX);
+//   sampleValue.xy = vec2(sampleValue.x + sampleValue.y) * 0.5; // Mono
+//   float dBRange = 115.0 - getLoudnesDataData(int(floor(lineX * float(bufferWidth)))).x;
+//   float multiplier = pow(10.0,dBRange / 30.0) * 0.1;
+//   sampleValue *= multiplier;
+//   vec3 lineClr = vec3(sampleValue.xy, max(sampleValue.x,sampleValue.y));
+//   vec3 returnClr = clamp(lineClr, 0.0, 1.0);
+//   float alpha = smoothstep(0.01, 0.03, max(returnClr.r,max(returnClr.g,returnClr.b))) * opacity;
+//   return vec4(pow(returnClr,vec3(1.0/2.1)), alpha);
+// }`,
+// "spectrumAnalyzer":/*glsl*/`
+const spectrumAnalyzerShader = scopeShaderHeader + /*glsl*/`
+
+uniform sampler2D loudnessTexture;\n
+uniform float opacity;\n
+vec4 getLoudnesDataData(int pos) {
+  return texelFetch(loudnessTexture, ivec2(pos % 1024, pos / 1024), 0);
+}
+
+const float log10 = 1.0 / log(10.0);
+
+vec4 renderComponent(vec2 center, vec2 size) {
+  float lineX = (localCoord.x / size.x);
+  float lineY = (localCoord.y / size.y) * value.w;
+  vec4 fftValue = getSample4Hist(lineX, int(-floor(lineY)));
+  vec2 sampleValue = vec2(length(fftValue.rg), length(fftValue.ba));
+  // sampleValue.xy = vec2(sampleValue.x + sampleValue.y) * 0.5; // Mono
+  float dBRange = 115.0 - getLoudnesDataData(int(floor(lineX * float(bufferWidth)))).x;
+  float multiplier = pow(10.0,dBRange / 30.0) * 0.1;
+  sampleValue *= multiplier;
+  vec3 lineClr = vec3(sampleValue.xy, 0.5*(min(sampleValue.x,sampleValue.y)+max(sampleValue.x,sampleValue.y)));
+  vec3 returnClr = clamp(lineClr, 0.0, 1.0);
+  float alpha = smoothstep(0.01, 0.03, max(returnClr.r,max(returnClr.g,returnClr.b))) * opacity;
+  return vec4(pow(returnClr,vec3(1.0/2.1)), alpha);
+}` + baseComponentShaderFooter;
 
 // TODO: Change to make use of MixerScope(Base)
 export class SpectrumAnalyzer {
@@ -34,6 +165,8 @@ export class SpectrumAnalyzer {
     if (!this._componentInfo) {
       const clipHash = getElementHash(this._clipElement) + ~~mixer?.mixerHash * 65535;
       this._componentInfo = this._controller.getComponentInfo(clipHash, 'spectrumAnalyzer', this.updateComponentInfo.bind(this));
+      this._componentInfo.getShader = this.handleGetShader.bind(this);
+      this._componentInfo.onShaderInit = this.handleShaderInit;
       this._scopeInfo = this._componentInfo.getFreeIndex(this.updateScopeInfo.bind(this))
     }
 
@@ -47,6 +180,10 @@ export class SpectrumAnalyzer {
     this.loudnessInfo = synth.gl.createOrUpdateFloat32TextureBuffer(this.loudnessMap, this.loudnessInfo);
   }
 
+  handleGetShader() {
+    return this.synth.getDefaultDefines() + spectrumAnalyzerShader;
+  }
+
   /** @param {ComponentInfo} info */
   updateComponentInfo(info) {
     const webGLSynth = this.synth;
@@ -56,16 +193,7 @@ export class SpectrumAnalyzer {
       info.clipRect.y      = box.y;
       info.clipRect.width  = this._clipElement.clientWidth;
       info.clipRect.height = this._clipElement.clientHeight;
-      info.shaderHeader =
-        webGLSynth.getDefaultDefines()  + scopeShaderHeader + `
-uniform sampler2D loudnessTexture;\n
-uniform float opacity;\n
-vec4 getLoudnesDataData(int pos) {
-  return texelFetch(loudnessTexture, ivec2(pos % 1024, pos / 1024), 0);
-}
-`;
     }
-    info.onShaderInit = this.handleShaderInit;
   }
 
   /**

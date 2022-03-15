@@ -9,7 +9,7 @@ export const defaultBorderColor = transparentColor;
 export const defaultSelectedBackgroundColor = [0.15, 0.15, 0.35, 1.0];
 export const defaultSelectedBorderColor = [0.5, 0.5, 1.0, 1.0];
 
-function getVertexShader() {
+function getVertexShader(options) {
   return /*glsl*/`
     in vec2 vertexPosition;
     out vec2 textureCoord;
@@ -37,7 +37,7 @@ function getVertexShader() {
 }
 
   // The shader that calculates the pixel values for the filled triangles
-function getFragmentShader() {
+function getFragmentShader(options) {
   return /*glsl*/`precision highp float;
   precision highp float;
   precision highp int;
@@ -258,6 +258,8 @@ export class AudioView {
     this.frameCount = 0;
     this.showMaxOnly = false;
     this.isSelected = false;
+    this.getFragmentShaderBound = this.getFragmentShader.bind(this);
+    this.getVertexShaderBound = this.getVertexShader.bind(this);
   }
 
   /**
@@ -303,12 +305,12 @@ export class AudioView {
     this.beatBuffer = { bufferWidth: this.synth.bufferWidth };
   }
 
-  getVertexShader() {
-    return getVertexShader();
+  getVertexShader(options) {
+    return getVertexShader(options);
   }
 
-  getFragmentShader() {
-    return getFragmentShader();
+  getFragmentShader(options) {
+    return this.synth.getDefaultDefines() + getFragmentShader(options);
   }
 
   _addLODData(target, len) {
@@ -389,7 +391,7 @@ export class AudioView {
     xOffsetSmooth = this.control.xOffsetSmooth, yOffsetSmooth = this.control.yOffsetSmooth) {
     
     const gl = this.gl;
-    const shader = this.shader = gl.checkUpdateShader('audio-view', this.getVertexShader(), this.synth.getDefaultDefines() + this.getFragmentShader());
+    const shader = this.shader = gl.checkUpdateShader2('audio-view', this.getVertexShaderBound, this.getFragmentShaderBound);
 
     if (gl && shader && this.parentElement && this.viewTexture0.texture && this.recordAnalyzeBuffer) {
       if (gl.updateShaderAndSize(this, shader, this.parentElement)) {

@@ -1,9 +1,10 @@
 import { BaseBinding } from "../../../KMN-varstack.js/vars/base.js";
 import { FloatVar } from "../../../KMN-varstack.js/vars/float.js";
-import { ComponentInfo, getElementHash, RectInfo, RectController, baseComponentShaderHeader } from "../../../KMN-varstack-browser/components/webgl/rect-controller.js";
+import { ComponentInfo, getElementHash, RectInfo, RectController, baseComponentShaderHeader, baseComponentShaderFooter } from "../../../KMN-varstack-browser/components/webgl/rect-controller.js";
 import { StringVar } from "../../../KMN-varstack.js/vars/string.js";
 import { SynthMixer } from "../../../KMN-gl-synth.js/webgl-synth-data.js";
 import WebGLSynth from "../../../KMN-gl-synth.js/webgl-synth.js";
+import { ComponentShaders } from "../../../KMN-varstack-browser/components/webgl/component-shaders.js";
 
 export const scopeShaderHeader = baseComponentShaderHeader + /*glsl*/`
 #define volumeScale 1.0
@@ -128,7 +129,15 @@ export class MixerScope {
 
     const clipHash = getElementHash(this._clipElement) + ~~mixer?.mixerHash * 65535;
     this._componentInfo = this._controller.getComponentInfo(clipHash, 'scope', this.updateComponentInfo.bind(this));
+    this._componentInfo.getShader = this.handleGetShader.bind(this);
     this._scopeInfo = this._componentInfo.getFreeIndex(this.updateScopeInfo.bind(this))
+  }
+
+  handleGetShader() {
+    return this.synth.getDefaultDefines() +
+      (this.isOutput
+        ? scopeShaderHeaderOutput
+        : scopeShaderHeader) + ComponentShaders['scope'] + baseComponentShaderFooter;
   }
 
   /** @param {ComponentInfo} info */
@@ -140,10 +149,6 @@ export class MixerScope {
       info.clipRect.y      = box.y;
       info.clipRect.width  = this._clipElement.clientWidth;
       info.clipRect.height = this._clipElement.clientHeight;
-      info.shaderHeader = webGLSynth.getDefaultDefines() +
-        (this.isOutput
-        ? scopeShaderHeaderOutput 
-          : scopeShaderHeader);
     }
     info.onShaderInit = this.handleShaderInit;
   }
@@ -246,7 +251,15 @@ export class Scope extends BaseBinding {
     this.isOutput = this.baseVar.$v === '#output'
     const clipHash = getElementHash(this._clipElement);
     this._componentInfo = this._controller.getComponentInfo(clipHash, 'scope', this.updateComponentInfo.bind(this));
+    this._componentInfo.getShader = this.handleGetShader.bind(this);
     this._sliderInfo = this._componentInfo.getFreeIndex(this.updateScopeInfo.bind(this))
+  }
+
+  handleGetShader() {
+    return this.synthController.webglSynth.getDefaultDefines() + 
+         (this.isOutput
+         ? scopeShaderHeaderOutput 
+         : scopeShaderHeader) + ComponentShaders['scope'] + baseComponentShaderFooter;
   }
 
   /** @param {ComponentInfo} info */
@@ -259,10 +272,6 @@ export class Scope extends BaseBinding {
       info.clipRect.y      = box.y;
       info.clipRect.width  = this._clipElement.clientWidth;
       info.clipRect.height = this._clipElement.clientHeight;
-      info.shaderHeader = webGLSynth.getDefaultDefines() + 
-        (this.isOutput
-        ? scopeShaderHeaderOutput 
-        : scopeShaderHeader);
     }
     info.onShaderInit = this.handleShaderInit;
   }

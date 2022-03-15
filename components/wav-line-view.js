@@ -1,13 +1,13 @@
 import { animationFrame } from "../../KMN-utils-browser/animation-frame.js";
 import PanZoomControl, { ControlHandlerBase } from "../../KMN-utils-browser/pan-zoom-control.js";
-import getWebGLContext from "../../KMN-utils.js/webglutils.js";
+import getWebGLContext, { getVertexIDDiabled } from "../../KMN-utils.js/webglutils.js";
 
-function getVertexShader() {
+function getVertexShader(options) {
   return /*glsl*/`precision highp float;
     precision highp float;
     precision highp int;
 
-    in vec2 vertexPosition;
+    in float vertexPosition;
 
     uniform sampler2D pointDataTexture;
 
@@ -30,7 +30,8 @@ function getVertexShader() {
     out vec2 textureCoordScreen;
 
     void main(void) {
-      int pointIx = gl_VertexID / 6;
+      int vId = ${options.vertexIDDisabled ? 'int(round(vertexPosition))' : 'gl_VertexID'};
+      int pointIx = vId / 6;
 
       lineStart = texelFetch(pointDataTexture, ivec2(pointIx % 1024, pointIx / 1024), 0);
       pointIx++;
@@ -42,7 +43,7 @@ function getVertexShader() {
       lineEnd.x = startX + timeStep;
 
       // pixelSize *= 3.0;  // Line width
-      int subPointIx = gl_VertexID % 6;
+      int subPointIx = vId % 6;
 
       vec2 pos;
       if (subPointIx == 1 || subPointIx >= 4) {
@@ -161,6 +162,11 @@ export class WavLineView extends ControlHandlerBase {
     if (!this.options.noRequestAnimationFrame) {
       animationFrame(this.updateCanvasBound);
     }
+
+    this.vertexIDDisabled = getVertexIDDiabled();
+    if (this.vertexIDDisabled) {
+      this.vertexBuffer = this.gl.getVertex_IDWorkaroundBuffer();
+    }
   }
 
   udatePoints() {
@@ -245,7 +251,7 @@ export class WavLineView extends ControlHandlerBase {
 
     let gl = this.gl;
 
-    let shader = gl.checkUpdateShader('wav-line', getVertexShader(), getFragmentShader());
+    let shader = gl.checkUpdateShader2('wav-line', getVertexShader, getFragmentShader);
   
     if (gl && shader && this.parentElement) {
       let durationOnScreen = this.duration / this.control.xScale;
@@ -265,7 +271,14 @@ export class WavLineView extends ControlHandlerBase {
           shader.u.timeStep?.set(this.timeStep / this.duration * 2.0);
           shader.u.lineAlpha?.set(1.0);// - Math.pow(Math.max(0.0, durationOnScreen * 15.0 - 0.5), .2));
     
+          if (this.vertexIDDisabled) {
+            shader.a.vertexPosition.en();
+            shader.a.vertexPosition.set(this.vertexBuffer, 1 /* elements per vertex */);
+          }
           gl.drawArrays(gl.TRIANGLES, 0, (this.pointsLength - 1) * 6.0);
+          if (this.vertexIDDisabled) {
+            shader.a.vertexPosition.dis();
+          }
         }
       }
     }
