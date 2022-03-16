@@ -126,7 +126,6 @@ export class TimeLineBase extends ControlHandlerBase {
   }
 
   handleKey(x, y, up) {
-    console.log('key', this.control.event);
     this.updateSelect(x, y);
     this.lineInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.lineData, this.lineInfo);
     return false;

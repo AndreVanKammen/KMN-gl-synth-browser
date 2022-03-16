@@ -393,7 +393,6 @@ class ControlLineData extends ControlHandlerBase {
     return false;
   }
   handleKey(x,y, up) {
-    console.log('key', this.control.event);
     this.updateSelect(x,y);
     this.pointInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.pointData, this.pointInfo);
     return false;
