@@ -20,6 +20,8 @@ export class TimeLineBase extends ControlHandlerBase {
     this.duration = 10.0;
     this.lineDataLength = 0;
     this.lineData = undefined;
+    this.perfStart = performance.now();
+    this.isSelected = false;
   }
 
   /**
@@ -198,11 +200,17 @@ export class TimeLineBase extends ControlHandlerBase {
           gl.activeTexture(gl.TEXTURE0);
         }
   
+        // TODO: standardize this for shaders
+        shader.u.time?.set((performance.now() - this.perfStart) / 1000.0);
+        shader.u.isSelected?.set(this.isSelected);
+        
         shader.u.scale?.set(this.control.xScaleSmooth, this.control.yScaleSmooth);
         shader.u.position?.set(this.control.xOffsetSmooth, this.control.yOffsetSmooth);
+
+        shader.u.duration?.set(this.duration);
+
         shader.u.beatsPerBar?.set(this.beatsPerBar);
         shader.u.timePerBeat?.set(this.timePerBeat);
-        shader.u.duration?.set(this.duration);
 
         shader.a.vertexPosition.en();
         shader.a.vertexPosition.set(this.vertexBuffer, 1 /* elements per vertex */);
