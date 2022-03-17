@@ -65,6 +65,9 @@ export class TimeLineBase extends ControlHandlerBase {
   }
 
   handleClick(x, y) {
+    if (!this.options.editable) {
+      return false;
+    }
     if (this.selectedPointIx !== -1) {
       let newClickTime = performance.now();
       if (this.lastClickTime && ((newClickTime - this.lastClickTime) < 400)) {
@@ -81,6 +84,9 @@ export class TimeLineBase extends ControlHandlerBase {
   }
   
   handleDown(x, y) {
+    if (!this.options.editable) {
+      return false;
+    }
     this.updateSelect(x, y);
     if (this.selectedPointIx >= 0) {
       this.captureControl();
@@ -94,12 +100,18 @@ export class TimeLineBase extends ControlHandlerBase {
   }
 
   handleLeave(x, y) {
+    if (!this.options.editable) {
+      return false;
+    }
     this.releaseControl();
     this.updateSelect(-1, -1);
     this.lineInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.lineData, this.lineInfo);
   }
   
   handleMove(x, y) {
+    if (!this.options.editable) {
+      return false;
+    }
     if (this.mouseDownOnPoint) {
       let dx = this.mouseDownOnPoint.x - x;
       let dy = this.mouseDownOnPoint.y - y;
@@ -117,6 +129,9 @@ export class TimeLineBase extends ControlHandlerBase {
   }
 
   handleUp(x, y) {
+    if (!this.options.editable) {
+      return false;
+    }
     if (this.selectedPointIx !== -1) {
       this.handleTimeChanged(this.selectedPointIx, this.lineData[this.selectedPointIx * 4]);
     }
@@ -126,6 +141,9 @@ export class TimeLineBase extends ControlHandlerBase {
   }
 
   handleKey(x, y, up) {
+    if (!this.options.editable) {
+      return false;
+    }
     this.updateSelect(x, y);
     this.lineInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.lineData, this.lineInfo);
     return false;

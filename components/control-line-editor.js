@@ -281,6 +281,9 @@ class ControlLineData extends ControlHandlerBase {
     }
     return true;
   }
+  handleDblClick(x, y) {
+    return this.selectedLineIx !== -1 || this.selectedPointIx !== -1;
+  }
   
   handleDown(x,y) {
     this.updateSelect(x,y);
