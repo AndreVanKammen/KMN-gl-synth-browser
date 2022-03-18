@@ -213,7 +213,11 @@ function getFragmentShader(options) {
     vec2 border = smoothstep(-px * 2.0, px * 2.0, edge);
     fragColor *= (1.0-border.x);
     vec4 beatColor = mix(backgroundColor, clamp(backgroundColor * 0.5,0.0,1.0),beatProgress);
-    beatColor.rg += highlight * 0.35;
+    if (highlight>=0.001) {
+      beatColor.rg = vec2(highlight * 0.8);
+      beatColor.b *= 0.15;
+      beatColor.b += 0.4;
+    }
     vec4 bgColor = mix(beatColor, borderColor, max(border.x, border.y));
     if (showBeats && textureCoord.y<0.1) {
       bgColor *= 0.0;
