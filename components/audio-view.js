@@ -214,7 +214,7 @@ function getFragmentShader(options) {
     fragColor *= (1.0-border.x);
     vec4 beatColor = mix(backgroundColor, clamp(backgroundColor * 0.5,0.0,1.0),beatProgress);
     if (highlight>=0.001) {
-      beatColor.rg = vec2(highlight * 0.8);
+      beatColor.rg = vec2(highlight * 0.7);
       beatColor.b *= 0.15;
       beatColor.b += 0.4;
     }
@@ -417,6 +417,8 @@ export class AudioView {
           bg = this.selectedBackgroundColor;
           border = this.selectedBorderColor;
         }
+        // @ts-ignore
+        shader.u.isSelected?.set(this.isSelected);
         shader.u.backgroundColor?.set(bg[0], bg[1], bg[2], bg[3]);
         shader.u.borderColor?.set(border[0], border[1], border[2], border[3]);
         shader.u.opacity?.set(this.opacity);
