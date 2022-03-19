@@ -50,6 +50,7 @@ function getFragmentShader(options) {
   flat in float fragmentsPerPixel;
   flat in vec2 borderLR;
   flat in float highlight;
+  flat in float beatDistance;
   out vec4 fragColor;
 
   uniform vec2 scale;
@@ -152,7 +153,7 @@ function getFragmentShader(options) {
     float delta = (textureCoord.x * durationInFragments);
 
     float readOffset = float(offset) + delta;
-    float playDistance = (delta - playPos) / 5000.0 * pow(scale.x, 1.2);
+    float playDistance = (delta - playPos) / 5000.0 * pow(scale.x, 1.2) + beatDistance;
     
     float fragmentsPerPixel = durationInFragments / (scale.x * float(windowSize.x));
     vec3 data1 = mixDataIX(readOffset);
