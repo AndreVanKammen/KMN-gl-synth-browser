@@ -134,7 +134,7 @@ function getFragmentShader(options) {
     if (!showMaxOnly) {
       result = result / preScale;
       vec3 resultDB = clamp(
-        (dBRange + (20.0 * log10 * log(0.000001 + result) )) / dBRange,
+        (dBRange + (20.0 * log10 * log(0.000001 + result)   )) / dBRange,
          0.0, 1.0);
       result = mix(result, resultDB, linearDbMix);
       result = pow(result,quadraticCurve);
@@ -184,7 +184,7 @@ function getFragmentShader(options) {
       beatData.rgb *= pow(clamp(beatData.rgb*0.025,0.0,1.0),vec3(5.0)) * 20.0;
     }
     if (playPos > 0.0) {
-      beatData.rgb += (1.0-pow(smoothstep(0.005,2.0,abs(playDistance)),0.1) ) * (0.7+0.3*max(clr.b,clr.r));
+      beatData.rgb += (1.0-pow(smoothstep(0.005,0.15,abs(playDistance)),0.2) ) * (0.7+0.3*max(clr.b,clr.r));
     }
     // beatData.rgb *= 1.0-0.8 * smoothstep(0.0,0.2,clr);
     
