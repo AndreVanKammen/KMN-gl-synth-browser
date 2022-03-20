@@ -85,12 +85,8 @@ vec4 renderComponent(vec2 center, vec2 size) {
       // keyDist *= 0.8;
     }
     vec4 noteData = getNoteData(keyNr);
-    if (noteData.x > 0.0 && noteData.x * size.y > localCoord.y) {
-      if (noteData.y >0.0) {
-        col = vec3(1.0,0.2,0.2);
-      } else {
-        col = vec3(0.0,0.8,0.0);
-      }
+    if (noteData.w > 0.0 && noteData.w * size.y > localCoord.y) {
+      col = noteData.rgb;
     }
   }
 
