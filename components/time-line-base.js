@@ -1,6 +1,6 @@
-import { animationFrame } from "../../KMN-utils-browser/animation-frame.js";
 import PanZoomControl, { ControlHandlerBase } from "../../KMN-utils-browser/pan-zoom-control.js";
 import getWebGLContext from "../../KMN-utils.js/webglutils.js";
+import { RectController } from "../../KMN-varstack-browser/components/webgl/rect-controller.js";
 // 0 1
 // 2
 // 2 1 3 4 
@@ -48,8 +48,10 @@ export class TimeLineBase extends ControlHandlerBase {
 
     // this.shader = gl.checkUpdateShader(this, getVertexShader(), getFragmentShader());
 
-    if (!this.options.noRequestAnimationFrame) {
-      animationFrame(this.updateCanvasBound);
+    if (this.options.canvasRoutine) {
+      this.canvasRoutine = this.options.canvasRoutine;
+    } else {
+      this.canvasRoutine = RectController.geInstance().registerCanvasUpdate('time-line', this.updateCanvasBound, this.parentElement);
     }
   }
 
@@ -218,9 +220,6 @@ export class TimeLineBase extends ControlHandlerBase {
         shader.a.vertexPosition.dis();
         // gl.drawArrays(gl.TRIANGLES, 0, (this.lineDataLength / 4) * 6.0);
       }
-    }
-    if (!this.options.noRequestAnimationFrame) {
-      animationFrame(this.updateCanvasBound);
     }
   }
 

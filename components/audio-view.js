@@ -1,6 +1,6 @@
 import WebGLSynth from "../../KMN-gl-synth.js/webgl-synth.js";
-import { animationFrame } from "../../KMN-utils-browser/animation-frame.js";
 import PanZoomControl from "../../KMN-utils-browser/pan-zoom-control.js";
+import { RectController } from "../../KMN-varstack-browser/components/webgl/rect-controller.js";
 
 const levelsOfDetail = 32;
 export const transparentColor = [0.0, 0.0, 0.0, 0.0];
@@ -301,8 +301,10 @@ export class AudioView {
     this.vertexBuffer = gl.updateOrCreateFloatArray(0, basic2triangles);
     // gl.checkUpdateShader('audio-view', getVertexShader(), this.webglSynth.getDefaultDefines() + getFragmentShader());
 
-    if (!this.options.noRequestAnimationFrame) {
-      animationFrame(this.updateCanvasBound);
+    if (this.options.canvasRoutine) {
+      this.canvasRoutine = this.options.canvasRoutine;
+    } else {
+      this.canvasRoutine = RectController.geInstance().registerCanvasUpdate('audio-view', this.updateCanvasBound, this.parentElement);
     }
 
     this.viewTexture0 = { bufferWidth: this.synth.bufferWidth };
@@ -452,9 +454,6 @@ export class AudioView {
           xOffsetSmooth, yOffsetSmooth);
       
       }
-    }
-    if (!this.options.noRequestAnimationFrame) {
-      animationFrame(this.updateCanvasBound);
     }
   }
 

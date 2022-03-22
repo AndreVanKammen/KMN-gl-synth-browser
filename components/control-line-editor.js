@@ -1,8 +1,7 @@
-import WebGLSynth from "../../KMN-gl-synth.js/webgl-synth.js";
-import { animationFrame } from "../../KMN-utils-browser/animation-frame.js";
 import PanZoomControl, { ControlHandlerBase, PanZoomBase, PanZoomParent } from "../../KMN-utils-browser/pan-zoom-control.js";
 import defer from "../../KMN-utils.js/defer.js";
 import getWebGLContext from "../../KMN-utils.js/webglutils.js";
+import { RectController } from "../../KMN-varstack-browser/components/webgl/rect-controller.js";
 // 0 1
 // 2
 // 2 1 3 4 
@@ -524,8 +523,10 @@ export class ControlLineEditor extends ControlHandlerBase {
 
     // this.shader = gl.checkUpdateShader('control-line',  getVertexShader(), getFragmentShader());
 
-    if (!this.options.noRequestAnimationFrame) {
-      animationFrame(this.updateCanvasBound);
+    if (this.options.canvasRoutine) {
+      this.canvasRoutine = this.options.canvasRoutine;
+    } else {
+      this.canvasRoutine = RectController.geInstance().registerCanvasUpdate('control-line-edit', this.updateCanvasBound, this.parentElement);
     }
   }
 
@@ -588,9 +589,6 @@ export class ControlLineEditor extends ControlHandlerBase {
           gl.drawArrays(gl.TRIANGLES, 0, (data.points.length) * 6.0);
         }
       }
-    }
-    if (!this.options.noRequestAnimationFrame) {
-      animationFrame(this.updateCanvasBound);
     }
   }
 
