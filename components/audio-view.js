@@ -3,19 +3,12 @@ import PanZoomControl from "../../KMN-utils-browser/pan-zoom-control.js";
 import { RectController } from "../../KMN-varstack-browser/components/webgl/rect-controller.js";
 
 const levelsOfDetail = 32;
-export const transparentColor = [0.0, 0.0, 0.0, 0.0];
-export const defaultBackgroundColor = [0.15, 0.15, 0.35, 1.0];
-export const defaultBorderColor = transparentColor;
-export const defaultSelectedBackgroundColor = [0.15, 0.15, 0.35, 1.0];
-export const defaultSelectedBorderColor = [0.5, 0.5, 1.0, 1.0];
 
 function getVertexShader(options) {
   return /*glsl*/`
     in vec2 vertexPosition;
     out vec2 textureCoord;
-    out float beatProgress;
     flat out float fragmentsPerPixel;
-    flat out vec2 borderLR;
     
     uniform float durationInFragments;
     uniform vec2 scale;
@@ -28,9 +21,6 @@ function getVertexShader(options) {
       textureCoord = (pos + 1.0) * 0.5;
       // Never draw outside the pan zoom area, viewport will handle textureCoord outside
       pos = (pos - position * 2.0 + 1.0) * scale - 1.0;
-      // No knowne beatprogress
-      beatProgress = 0.0;
-      borderLR = vec2(0.0,1.0);
       fragmentsPerPixel = durationInFragments / (scale.x * windowSize.x);
       gl_Position = vec4(pos, 0.0, 1.0);
     }`
@@ -45,20 +35,14 @@ function getFragmentShader(options) {
 
   const float pi = 3.141592653589793;
 
-  in float beatProgress;
   in vec2 textureCoord;
   flat in float fragmentsPerPixel;
-  flat in vec2 borderLR;
-  flat in float highlight;
-  flat in float beatDistance;
   out vec4 fragColor;
 
   uniform vec2 scale;
   uniform int offset;
 
   uniform float durationInFragments;
-  uniform float playPos;
-  uniform int frameCount;
   uniform bool showMaxOnly;
 
   uniform vec2 windowSize;
@@ -66,22 +50,20 @@ function getFragmentShader(options) {
   uniform int[${levelsOfDetail}] LODOffsets;
   uniform float LODLevel;
 
-  uniform bool rekordBoxColors;
-  uniform bool removeAvgFromRMS;
-  uniform bool showBeats;
-
+  uniform vec4 maxColor;
+  uniform vec4 rmsColor;
+  uniform vec4 engColor;
+  
   uniform vec3 preScale;
   uniform vec3 quadraticCurve;
   uniform vec3 linearDbMix;
   uniform vec3 dBRange;
-  uniform vec4 backgroundColor;
-  uniform vec4 borderColor;
+
   uniform float opacity;
 
   uniform sampler2D analyzeTexturesLeft;
   uniform sampler2D analyzeTexturesRight;
-  uniform sampler2D beatTexture;
-
+  
   const float log10 = 1.0 / log(10.0);
 
   vec3 getDataIX0(int ix, int LODLevel) {
@@ -93,11 +75,6 @@ function getFragmentShader(options) {
   }
 
   vec3 getDataIX1(float ix_in, int LODLevel) {
-    // if (!showMaxOnly) {
-    //   // if (fragmentsPerPixel<=0.03) {
-    //   //ix_in += .5;
-    // }
-    // int len = int(ceil(pow(0.5,float(LODLevel)) * durationInFragments));
     int divider = int(pow(2.0, float(LODLevel)));
     int LODOffset = LODOffsets[LODLevel];
     int maxLODOffset = LODOffsets[LODLevel+1];
@@ -112,7 +89,6 @@ function getFragmentShader(options) {
     vec3 low = getDataIX0(int(floor(ix)), LODLevel);
     vec3 high = getDataIX0(int(ceil(ix)), LODLevel);
      
-    // return mix(low,high,fract(ix * float(fragmentsPerPixel>0.03)));
     return mix(low,high,fract(ix * float(!showMaxOnly)));
   }
 
@@ -128,9 +104,7 @@ function getFragmentShader(options) {
     int stopIx = int(ceil(ix));
     
     vec3 result = getDataIX(ix, clamp(log2(0.5+fragmentsPerPixel*(1.0+LODLevel)),0.01,float(${levelsOfDetail})));
-    // result.yz = sqrt(result.yz);
     result.z *= 4.0;
-    // if (fragmentsPerPixel>0.03) {
     if (!showMaxOnly) {
       result = result / preScale;
       vec3 resultDB = clamp(
@@ -144,20 +118,13 @@ function getFragmentShader(options) {
     return result;
   }
 
-  vec4 getBeatData(int ix) {
-    ivec2 point = ivec2(ix % bufferWidth, ix / bufferWidth);
-    return texelFetch(beatTexture, point, 0);
-  }
-
   void main(void) {
     float delta = (textureCoord.x * durationInFragments);
 
     float readOffset = float(offset) + delta;
-    float playDistance = (delta - playPos) / 5000.0 * pow(scale.x, 1.2) + beatDistance;
     
     float fragmentsPerPixel = durationInFragments / (scale.x * float(windowSize.x));
     vec3 data1 = mixDataIX(readOffset);
-    vec4 beatData = getBeatData(int(round(readOffset)));
     vec2 px = vec2(1.0) / vec2(windowSize) / scale;
 
     vec3 dist = clamp(data1,0.0,1.0);
@@ -165,68 +132,16 @@ function getFragmentShader(options) {
       dist - vec3(px.y),
       dist + vec3(px.y), 
       abs(vec3(1.0 - 2.0 * textureCoord.y)));
-    vec3 clr = 1.0 - dist;
-    clr.r = max(clr.r - clr.b * clr.b * 0.2, 0.0);
-    clr.g = max(clr.g - clr.b * clr.b * 0.15, 0.0) * 0.8;
+    vec3 d = 1.0 - dist;
 
-    if (!showBeats || textureCoord.y>0.1) {
-      beatData.rgb *= 0.0;
-    } else {
-      beatData.rgba *= vec4(bvec4(
-        textureCoord.y < 0.025,
-        textureCoord.y > 0.025 && textureCoord.y<0.050,
-        textureCoord.y > 0.050 && textureCoord.y<0.075,
-        textureCoord.y > 0.075
-        ));
-      if (beatData.a>100.0) {
-        beatData.rgb = vec3(beatData.a / 1000.0);
-      }
-      beatData.rgb *= pow(clamp(beatData.rgb*0.025,0.0,1.0),vec3(5.0)) * 20.0;
-    }
-    if (playPos > 0.0) {
-      beatData.rgb += (1.0-pow(smoothstep(0.005,0.15,abs(playDistance)),0.2) ) * (0.7+0.3*max(clr.b,clr.r));
-    }
-    // beatData.rgb *= 1.0-0.8 * smoothstep(0.0,0.2,clr);
-    
-    if (rekordBoxColors) {
-      vec3 d = clr;
-      clr = d.r * vec3(0            ,  83.0 / 255.0, 225.0 / 255.0);
-      clr *= (1.0 - d.g);
-      clr += d.g * vec3(179.0 / 255.0, 102.0 / 255.0,   7.0 / 255.0);
-      clr *= (1.0 - d.b);
-      clr += d.b * vec3(245.0 / 255.0, 235.0 / 255.0, 215.0 / 255.0);
-    } else {
-      clr.r = max(0.0,clr.r-(clr.g+clr.b) * 0.2);
-      clr.g = max(0.0,clr.g-clr.b * 0.4);
-    }
-    //if (fragmentsPerPixel<=0.03) {
-      clr.rgb *= 0.9;
-    //}
-    float a = max(max(clr.r,clr.g),clr.b) * opacity;
-    fragColor = vec4(clamp(beatData.rgb + clr.rgb * 0.7, 0.0,1.0) ,a);
+    vec4 clr = d.r * maxColor;
+    clr = mix(clr, rmsColor, rmsColor.a * d.g);
+    clr = mix(clr, engColor, engColor.a * d.b);
+    // float a = max(max(clr.r,clr.g),clr.b) * opacity;
+    fragColor = vec4(clamp(clr.rgb, 0.0,1.0) ,clr.a * opacity);
     if (textureCoord.y<0.0) {
       fragColor *= 0.0;
     }
-    //fragColor.rgb *= 0.7;
-    vec2 edge = vec2(max(borderLR.x-textureCoord.x, textureCoord.x-borderLR.y),
-                     abs(textureCoord.y - 0.5) - 0.5);
-
-    vec2 border = smoothstep(-px * 2.0, px * 2.0, edge);
-    fragColor *= (1.0-border.x);
-    vec4 beatColor = mix(backgroundColor, clamp(backgroundColor * 0.5,0.0,1.0),beatProgress);
-    if (highlight>=0.001) {
-      beatColor.rg = vec2(highlight * 0.7);
-      beatColor.b *= 0.15;
-      beatColor.b += 0.4;
-    }
-    vec4 bgColor = mix(beatColor, borderColor, max(border.x, border.y));
-    if (showBeats && textureCoord.y<0.1) {
-      bgColor *= 0.0;
-      fragColor.a = 1.0;
-    }
-    fragColor = bgColor * (1.0-fragColor.a) + fragColor;
-    border = 1.0-smoothstep(px, px * 4.0,edge);
-    fragColor.a *= min(border.x, border.y);
   }
   `
 }
@@ -253,18 +168,30 @@ export class AudioView {
     this.dBRangeRMS = 90.0;
     this.dBRangeEng = 90.0;
     this.levelOfDetail = 2.7;
-    this.rekordBoxColors = false;
-    this.backgroundColor = defaultBackgroundColor;
-    this.borderColor = defaultBorderColor;
-    this.selectedBackgroundColor = defaultSelectedBackgroundColor;
-    this.selectedBorderColor = defaultSelectedBorderColor;
     this.opacity = 1.0
     this.showBeats = false;
-    this.frameCount = 0;
     this.showMaxOnly = false;
-    this.isSelected = false;
     this.getFragmentShaderBound = this.getFragmentShader.bind(this);
     this.getVertexShaderBound = this.getVertexShader.bind(this);
+
+    this.rekordBoxColors = false;
+  }
+
+  get rekordBoxColors() {
+    return this._rekordBoxColors;
+  }
+
+  set rekordBoxColors(x) {
+    this._rekordBoxColors = x;
+    if (this._rekordBoxColors) {
+      this.maxColor = [0, 83.0 / 255.0, 225.0 / 255.0, 1.0];
+      this.rmsColor = [179.0 / 255.0, 102.0 / 255.0, 7.0 / 255.0, 1.0];
+      this.engColor = [245.0 / 255.0, 235.0 / 255.0, 215.0 / 255.0, 1.0];
+    } else {
+      this.maxColor = [1, 0, 0, 0.8];
+      this.rmsColor = [0, 1, 0, 0.8];
+      this.engColor = [0, 0, 1, 0.8];
+    }
   }
 
   /**
@@ -309,7 +236,6 @@ export class AudioView {
 
     this.viewTexture0 = { bufferWidth: this.synth.bufferWidth };
     this.viewTexture1 = { bufferWidth: this.synth.bufferWidth };
-    this.beatBuffer = { bufferWidth: this.synth.bufferWidth };
   }
 
   getVertexShader(options) {
@@ -394,46 +320,39 @@ export class AudioView {
   }
 
   updateCanvas(
-    xScaleSmooth = this.control.xScaleSmooth, yScaleSmooth = this.control.yScaleSmooth,
-    xOffsetSmooth = this.control.xOffsetSmooth, yOffsetSmooth = this.control.yOffsetSmooth) {
+    xScaleSmooth = this.control.xScaleSmooth,
+    yScaleSmooth = this.control.yScaleSmooth,
+    xOffsetSmooth = this.control.xOffsetSmooth,
+    yOffsetSmooth = this.control.yOffsetSmooth) {
     
     const gl = this.gl;
     const shader = this.shader = gl.checkUpdateShader2('audio-view', this.getVertexShaderBound, this.getFragmentShaderBound);
 
-    if (gl && shader && this.parentElement && this.viewTexture0.texture && this.recordAnalyzeBuffer) {
+    if (gl && this.parentElement && this.viewTexture0.texture && this.recordAnalyzeBuffer) {
       if (gl.updateShaderAndSize(this, shader, this.parentElement)) {
-        shader.u.playPos?.set(this.onGetPlayPos(this) * this.durationInFragments);
 
         shader.u.offset?.set(this.dataOffset); // this.webglSynth.processCount);s
         shader.u.durationInFragments?.set(this.durationInFragments);
         shader.u.scale?.set(xScaleSmooth, yScaleSmooth);
         shader.u.position?.set(xOffsetSmooth, yOffsetSmooth);
 
-        // shader.u.removeAvgFromRMS.set(false);
-        shader.u.preScale?.set(      this.preScaleMax,       this.preScaleRMS ,       this.preScaleEng);
-        shader.u.quadraticCurve?.set(this.quadraticCurveMax, this.quadraticCurveRMS , this.quadraticCurveEng);
-        shader.u.linearDbMix?.set(   this.linearDbMixMax,    this.linearDbMixRMS ,    this.linearDbMixEng);
+        shader.u.preScale?.set(      this.preScaleMax,       this.preScaleRMS,       this.preScaleEng);
+        shader.u.quadraticCurve?.set(this.quadraticCurveMax, this.quadraticCurveRMS, this.quadraticCurveEng);
+        shader.u.linearDbMix?.set(   this.linearDbMixMax,    this.linearDbMixRMS,    this.linearDbMixEng);
         shader.u.dBRange?.set(this.dBRangeMax, this.dBRangeRMS, this.dBRangeEng);
-        let bg = this.backgroundColor;
-        let border = this.borderColor;
-        if (this.isSelected) {
-          bg = this.selectedBackgroundColor;
-          border = this.selectedBorderColor;
-        }
+
         // @ts-ignore
-        shader.u.isSelected?.set(this.isSelected);
-        shader.u.backgroundColor?.set(bg[0], bg[1], bg[2], bg[3]);
-        shader.u.borderColor?.set(border[0], border[1], border[2], border[3]);
         shader.u.opacity?.set(this.opacity);
-        shader.u.showBeats?.set(this.showBeats?1:0);
-        shader.u.frameCount?.set(this.frameCount++);
         shader.u.showMaxOnly?.set(~~this.showMaxOnly);
 
         if (shader.u["LODOffsets[0]"]) {
           gl.uniform1iv(shader.u["LODOffsets[0]"], this.LODOffsets);
         }
         shader.u.LODLevel?.set((this.levelOfDetail));
-        shader.u.rekordBoxColors?.set((this.rekordBoxColors?1:0));
+        // shader.u.rekordBoxColors?.set((this.rekordBoxColors?1:0));
+        shader.u.maxColor.set.apply(null, this.maxColor);
+        shader.u.rmsColor.set.apply(null, this.rmsColor);
+        shader.u.engColor.set.apply(null, this.engColor);
       
         gl.activeTexture(gl.TEXTURE10);
         gl.bindTexture(gl.TEXTURE_2D, this.recordAnalyzeBuffer.leftTex);
@@ -444,35 +363,16 @@ export class AudioView {
         gl.uniform1i(shader.u.analyzeTexturesRight, 11);
         gl.activeTexture(gl.TEXTURE0);
 
-        if (this.beatBuffer.texture) {
-          gl.activeTexture(gl.TEXTURE12);
-          gl.bindTexture(gl.TEXTURE_2D, this.beatBuffer.texture);
-          gl.uniform1i(shader.u.beatTexture, 12);
-        }
-
-        this.drawFunction(xScaleSmooth, yScaleSmooth,
-          xOffsetSmooth, yOffsetSmooth);
-      
+        this.drawFunction(shader, xScaleSmooth, yScaleSmooth, xOffsetSmooth, yOffsetSmooth);
       }
     }
   }
 
-  drawFunction(xScaleSmooth, yScaleSmooth,
-    xOffsetSmooth, yOffsetSmooth) {
+  drawFunction(shader, xScaleSmooth, yScaleSmooth, xOffsetSmooth, yOffsetSmooth) {
     const gl = this.gl;
-    const shader = this.shader;
     shader.a.vertexPosition.en();
     shader.a.vertexPosition.set(this.vertexBuffer, 2 /* elements per vertex */);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     shader.a.vertexPosition.dis();
   }
-
-  setBeatData(beatBufferData) {
-    let sourceLen = beatBufferData.length;
-    let modulus = this.synth.bufferWidth * 4;
-    let viewBuf0 = new Float32Array(Math.ceil(sourceLen/modulus) * modulus);
-    viewBuf0.set(beatBufferData);
-    this.beatBuffer = this.gl.createOrUpdateFloat32TextureBuffer(viewBuf0, this.beatBuffer);
-  }
-
 }
