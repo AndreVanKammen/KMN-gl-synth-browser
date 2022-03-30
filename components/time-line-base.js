@@ -21,7 +21,6 @@ export class TimeLineBase extends ControlHandlerBase {
     this.lineDataLength = 0;
     this.lineData = undefined;
     this.perfStart = performance.now();
-    this.isSelected = false;
   }
 
   /**
@@ -41,9 +40,7 @@ export class TimeLineBase extends ControlHandlerBase {
       maxXScale: 1000.0
     });
 
-    if (this.options.editable) {
-      this.control.addHandler(this);
-    }
+    this.control.addHandler(this);
     this.vertexBuffer = gl.getVertex_IDWorkaroundBuffer();
 
     // this.shader = gl.checkUpdateShader(this, getVertexShader(), getFragmentShader());
@@ -69,9 +66,6 @@ export class TimeLineBase extends ControlHandlerBase {
   }
 
   handleClick(x, y) {
-    if (!this.options.editable) {
-      return false;
-    }
     if (this.selectedPointIx !== -1) {
       let newClickTime = performance.now();
       if (this.lastClickTime && ((newClickTime - this.lastClickTime) < 400)) {
@@ -88,9 +82,6 @@ export class TimeLineBase extends ControlHandlerBase {
   }
   
   handleDown(x, y) {
-    if (!this.options.editable) {
-      return false;
-    }
     this.updateSelect(x, y);
     if (this.selectedPointIx >= 0) {
       this.captureControl();
@@ -104,18 +95,12 @@ export class TimeLineBase extends ControlHandlerBase {
   }
 
   handleLeave(x, y) {
-    if (!this.options.editable) {
-      return false;
-    }
     this.releaseControl();
     this.updateSelect(-1, -1);
     this.lineInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.lineData, this.lineInfo);
   }
   
   handleMove(x, y) {
-    if (!this.options.editable) {
-      return false;
-    }
     if (this.mouseDownOnPoint) {
       let dx = this.mouseDownOnPoint.x - x;
       let dy = this.mouseDownOnPoint.y - y;
@@ -133,9 +118,6 @@ export class TimeLineBase extends ControlHandlerBase {
   }
 
   handleUp(x, y) {
-    if (!this.options.editable) {
-      return false;
-    }
     if (this.selectedPointIx !== -1) {
       this.handleTimeChanged(this.selectedPointIx, this.lineData[this.selectedPointIx * 4]);
     }
@@ -145,32 +127,32 @@ export class TimeLineBase extends ControlHandlerBase {
   }
 
   handleKey(x, y, up) {
-    if (!this.options.editable) {
-      return false;
-    }
     this.updateSelect(x, y);
     this.lineInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.lineData, this.lineInfo);
     return false;
   }
 
+  getXoffset(ix) {
+    return this.lineData[ix * 4] / this.duration;
+  }
+
   updateSelect(x, y) {
     const pointSize = 10.0;
-    const cd = {
-      xOffset: x,
-      xFactor: this.width * this.control.xScale
-    }
+    const xOffset = x;
+    const xFactor = this.width * this.control.xScale;
 
-    let ofs = 0;
     let minDist = pointSize;
     let selectedIx = -1;
-    while (ofs < this.lineDataLength) {
-      const sdx = (this.lineData[ofs] / this.duration - cd.xOffset) * cd.xFactor;
-      let dist = Math.abs(sdx);
-      if (dist < minDist) {
-        minDist = dist;
-        selectedIx = ofs / 4;
+    for (let ix = 0; ix < this.lineDataLength / 4; ix++) {
+      let offsetX = this.getXoffset(ix);
+      if (offsetX >= 0 && offsetX <= 1.0) {
+        const sdx = (offsetX - xOffset) * xFactor;
+        let dist = Math.abs(sdx);
+        if (dist < minDist) {
+          minDist = dist;
+          selectedIx = ix;
+        }
       }
-      ofs += 4;
     }
 
     if (selectedIx !== -1) {
@@ -205,6 +187,7 @@ export class TimeLineBase extends ControlHandlerBase {
         // TODO: standardize this for shaders
         shader.u.time?.set((performance.now() - this.perfStart) / 1000.0);
         shader.u.isSelected?.set(this.isSelected);
+        shader.u.isFocussed?.set(this.isFocussed);
         
         shader.u.scale?.set(this.control.xScaleSmooth, this.control.yScaleSmooth);
         shader.u.position?.set(this.control.xOffsetSmooth, this.control.yOffsetSmooth);

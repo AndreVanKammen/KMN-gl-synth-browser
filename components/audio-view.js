@@ -1,5 +1,5 @@
 import WebGLSynth from "../../KMN-gl-synth.js/webgl-synth.js";
-import PanZoomControl from "../../KMN-utils-browser/pan-zoom-control.js";
+import PanZoomControl, { ControlHandlerBase } from "../../KMN-utils-browser/pan-zoom-control.js";
 import { RectController } from "../../KMN-varstack-browser/components/webgl/rect-controller.js";
 
 const levelsOfDetail = 32;
@@ -146,8 +146,9 @@ function getFragmentShader(options) {
   `
 }
 
-export class AudioView {
-  constructor (options) {
+export class AudioView extends ControlHandlerBase {
+  constructor(options) {
+    super();
     this.options = options;
 
     this.updateCanvasBound = this.updateCanvas.bind(this);
@@ -209,6 +210,8 @@ export class AudioView {
       minXScale: 1.0,
       maxXScale: 1000.0
     });
+
+    this.control.addHandler(this);
   }
 
   /**
