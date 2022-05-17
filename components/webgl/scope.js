@@ -246,6 +246,7 @@ export class Scope extends BaseBinding {
     // this._scopeID = instrumentName.value
     // this._tli = trackLineInfo;
     this._clipElement = element.$getClippingParent();
+    // TODO Remove this terrible construction, it does not work and depends on assumptions of synthcontroller in datamodel
     this.mainDataModel = instrumentName.$getMain();
 
     this.isOutput = this.baseVar.$v === '#output'
