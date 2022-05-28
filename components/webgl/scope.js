@@ -95,7 +95,7 @@ vec2 getSample(float lineX) {
   return texelFetch(outputTexture,
       ivec3(round(lineX * float(bufferWidth)), 
             0,
-            0), 0).rg;
+            0), 0).rg * 0.5;
 }
 
 float getMax() {
