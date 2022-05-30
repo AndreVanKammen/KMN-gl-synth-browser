@@ -144,11 +144,6 @@ function getFragmentShader() {
     if (lineInfo.z < 0.0 && edgeDist < 0.1) {
       lineColor = vec4(0.0);
     }
-    if (lineInfo.w > 2.0) {
-      pixelsPerLine *= 30.0;
-      lineWidth = 0.15 * dpr;
-      lineColor = vec4(1.0,1.0,0.0,1.0);
-    }
     lineColor.a *= clamp(pow(pixelsPerLine, 0.3) - 1.8, 0.0, 1.0);
                   // * pow(durationOnScreen, 0.1) / 3.0;
 
