@@ -154,7 +154,6 @@ export class AudioView extends ControlHandlerBase {
     this.updateCanvasBound = this.updateCanvas.bind(this);
     this.dataOffset = 0;
     this.durationInFragments = 1000;
-    this.onGetPlayPos = (sender) => -1;
 
     this.preScaleMax = 1.0;
     this.preScaleRMS = 1.0;
