@@ -187,7 +187,7 @@ export class TimeLineBase extends ControlHandlerBase {
         // TODO: standardize this for shaders
         shader.u.time?.set((performance.now() - this.perfStart) / 1000.0);
         shader.u.isSelected?.set(this.isSelected);
-        shader.u.isFocussed?.set(this.isFocussed);
+        shader.u.isFocused?.set(this.isFocused);
         
         shader.u.scale?.set(this.control.xScaleSmooth, this.control.yScaleSmooth);
         shader.u.position?.set(this.control.xOffsetSmooth, this.control.yOffsetSmooth);

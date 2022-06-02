@@ -47,6 +47,10 @@ function getVertexShader() {
         gl_Position = vec4(-1.0,-1.0,-1.0, 1.0);
         return;
       }
+
+      if (lineInfo.z>0.0) {
+        pixelSize.x *= 3.0;
+      }
           
       int subPointIx = vId % 6;
       vec2 pos;
@@ -75,6 +79,7 @@ function getVertexShader() {
     }`
 }
 
+// TODO: Move Automixer specific stuff to mix-beat-grid-editor
 // The shader that calculates the pixel values for the filled triangles
 function getFragmentShader() {
   return /*glsl*/`precision highp float;
@@ -144,6 +149,12 @@ function getFragmentShader() {
     if (lineInfo.z < 0.0 && edgeDist < 0.1) {
       lineColor = vec4(0.0);
     }
+    if (lineInfo.z > 0.0 && edgeDist < 0.1) {
+      lineColor = vec4(1.0);
+      lineWidth = 0.0 * dpr + (0.1 - edgeDist) * 0.5;
+      pixelsPerLine = 100.0;//windowSize.x / beatsOnSreen;
+    }
+
     lineColor.a *= clamp(pow(pixelsPerLine, 0.3) - 1.8, 0.0, 1.0);
                   // * pow(durationOnScreen, 0.1) / 3.0;
 
@@ -177,7 +188,7 @@ export class BeatGridEditor extends TimeLineBase {
       data[ofs++] = line.time;
       data[ofs++] = line.nr;
       data[ofs++] = line.type;
-      data[ofs++] = line.phraseStart;
+      data[ofs++] = line.phraseNr;
     }
 
     if (this.lines.length) {
