@@ -178,7 +178,7 @@ export class BeatGridEditor extends TimeLineBase {
     this.updateLines();
   }
 
-  updateLines(skipUpdate = false) {
+  updateLines() {
     const gl = this.gl;
     // TODO size is multiple check for more then 1000 points
     this.lineDataLength = this.lines.length * 4;
@@ -196,9 +196,7 @@ export class BeatGridEditor extends TimeLineBase {
     } else {
       this.timePerBeat = 1.0;
     }
-    if (!skipUpdate) {
-      this.lineInfo = gl.createOrUpdateFloat32TextureBuffer(data, this.lineInfo, 0, ofs);
-    }
+    this.lineInfo = gl.createOrUpdateFloat32TextureBuffer(data, this.lineInfo, 0, ofs);
   }
 
   mouseOverLine(oldIx, newIx) {
