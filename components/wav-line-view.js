@@ -20,55 +20,37 @@ function getVertexShader(options) {
     uniform float startTime;
     uniform float timeStep;
 
-    flat out vec4 lineStart;
-    flat out vec4 lineEnd;
-
-    flat out vec2 lineStartScreen;
-    flat out vec2 lineEndScreen;
-
-    out vec2 textureCoord;
-    out vec2 textureCoordScreen;
+    out float importance;
 
     void main(void) {
       int vId = ${options.vertexIDDisabled ? 'int(round(vertexPosition))' : 'gl_VertexID'};
-      int pointIx = vId / 6;
+      int pointIx = vId / 2;
 
-      lineStart = texelFetch(pointDataTexture, ivec2(pointIx % 1024, pointIx / 1024), 0);
+      vec4 lineStart = texelFetch(pointDataTexture, ivec2(pointIx % 1024, pointIx / 1024), 0);
       pointIx++;
-      lineEnd = texelFetch(pointDataTexture, ivec2(pointIx % 1024, pointIx / 1024), 0);
+      vec4 lineEnd = texelFetch(pointDataTexture, ivec2(pointIx % 1024, pointIx / 1024), 0);
       float startX = startTime + float(pointIx) * timeStep;
       
-      vec2 pixelSize = vec2(2.0) / scale / windowSize * dpr;
       lineStart.x = startX;
       lineEnd.x = startX + timeStep;
 
-      // pixelSize *= 3.0;  // Line width
-      int subPointIx = vId % 6;
+      int subPointIx = vId % 2;
 
+      importance = lineStart.w;
       vec2 pos;
-      if (subPointIx == 1 || subPointIx >= 4) {
-        pos.x = lineStart.x - pixelSize.x;
+      if (subPointIx == 0) {
+        pos.x = lineStart.x;
       } else {
-        pos.x = lineEnd.x + pixelSize.x;
+        pos.x = lineEnd.x;
       }
 
-      if (subPointIx <= 1 || subPointIx == 4) {
-        pos.y = min(lineStart.y, lineEnd.y) - pixelSize.y;
+      if (subPointIx == 0) {
+        pos.y = lineStart.y;
       } else {
-        pos.y = max(lineStart.y, lineEnd.y) + pixelSize.y;
+        pos.y =lineEnd.y;
       }
 
-      lineStartScreen = lineStart.xy;
-      lineEndScreen = lineEnd.xy;
-
-      textureCoord = pos;
       pos = (pos - position * 2.0 + 1.0) * scale - 1.0;
-      lineStartScreen = (lineStartScreen - position * 2.0 + 1.0) * scale - 1.0;
-      lineEndScreen = (lineEndScreen - position * 2.0 + 1.0) * scale - 1.0;
-
-      lineStartScreen = (lineStartScreen + 1.0) * 0.5 * windowSize;
-      lineEndScreen = (lineEndScreen + 1.0) * 0.5 * windowSize;
-      textureCoordScreen = (pos + 1.0) * 0.5 * windowSize;
 
       gl_Position = vec4(pos, 0.0, 1.0);
     }`
@@ -81,41 +63,24 @@ function getFragmentShader() {
   precision highp int;
   precision highp sampler2DArray;
 
-  const float pi = 3.141592653589793;
-
-  uniform vec2 windowSize;
-  uniform float dpr;
   uniform float lineAlpha;
 
-  flat in vec4 lineStart;
-  flat in vec4 lineEnd;
-
-  flat in vec2 lineStartScreen;
-  flat in vec2 lineEndScreen;
-
-  in vec2 textureCoord;
-  in vec2 textureCoordScreen;
+  in float importance;
   out vec4 fragColor;
 
   float line(vec2 p, vec2 a, vec2 b)
   {
     vec2 pa = p - a;
     vec2 ba = b - a;
-    float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+    // float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+    float h = dot(pa, ba) / dot(ba, ba);
     return length(pa - ba * h);
   }
 
   const vec3 pointBorderColor = vec3(0.8);
 
   void main(void) {
-    vec4 color = vec4(0.0);
-
-    float lineDist = line(textureCoordScreen.xy, lineStartScreen.xy, lineEndScreen.xy);
-    float lineWidth = 0.02 * dpr;
-    float hasLine = 1.0 - smoothstep(lineWidth, lineWidth + 1.5 * dpr, lineDist);
-
-    color = hasLine * vec4(1.0,1.0,1.0,lineAlpha) * lineStart.w;
-    fragColor = vec4(pow(color.rgb,vec3(1.0/2.2)),color.a);
+    fragColor = vec4(1.0,vec2(importance),lineAlpha);
   }
   `
 }
@@ -130,11 +95,9 @@ export class WavLineView extends ControlHandlerBase {
     this.mouseDownOnPoint = null;
     this.leftSamples = null;
     this.rightSamples = null;
-    this.maxSamples = this.options.maxSamples || 64 * 1024;
+    this.maxSamples = this.options.maxSamples || 256 * 1024;
     this.pointData = new Float32Array(Math.ceil(this.maxSamples * 4.0 / 4096) * 4096);
     this.sampleRate = 44100;
-    /** @type {(data: Float32Array, length: number) => void} */
-    this.onAddEnergyLevels = null;
     this.track = null;
     this.durationTreshhold = 3.0;
     this.onGetAudioTrack = (sender) => this.track;
@@ -235,9 +198,6 @@ export class WavLineView extends ControlHandlerBase {
         data[ofs++] = 1.0;
         // ofs += 4;
       }
-      if (this.onAddEnergyLevels) {
-        this.onAddEnergyLevels(data, this.pointsLength);
-      }
     }
     this.pointInfo = this.gl.createOrUpdateFloat32TextureBuffer(data, this.pointInfo);//, 0, this.pointsLength * 4);
     return (sampleCount !== 0);
@@ -271,14 +231,14 @@ export class WavLineView extends ControlHandlerBase {
           shader.u.duration?.set(this.duration);
           shader.u.startTime?.set(this.startTime / this.duration * 2.0 - 1.0);
           shader.u.timeStep?.set(this.timeStep / this.duration * 2.0);
-          shader.u.lineAlpha?.set(1.0);// - Math.pow(Math.max(0.0, durationOnScreen * 15.0 - 0.5), .2));
+          shader.u.lineAlpha?.set(1.0 - Math.max(0.0, Math.pow(durationOnScreen / this.durationTreshhold,0.33) - 0.2 ));
     
           if (this.vertexIDDisabled) {
             shader.a.vertexPosition.en();
             // @ts-ignore
             shader.a.vertexPosition.set(this.vertexBuffer, 1 /* elements per vertex */);
           }
-          gl.drawArrays(gl.TRIANGLES, 0, (this.pointsLength - 1) * 6.0);
+          gl.drawArrays(gl.LINES, 0, (this.pointsLength - 1) * 2.0);
           if (this.vertexIDDisabled) {
             shader.a.vertexPosition.dis();
           }
