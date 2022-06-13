@@ -564,7 +564,8 @@ export class ControlLineEditor extends ControlHandlerBase {
     }
 
     let gl = this.gl;
-    let shader = gl.checkUpdateShader('control-line', getVertexShader(), getFragmentShader());
+    // let shader = gl.checkUpdateShader('control-line', getVertexShader(), getFragmentShader());
+    let shader = gl.checkUpdateShader2('control-line', getVertexShader, getFragmentShader);
 
     if (gl && shader && this.parentElement) {
       if (gl.updateShaderAndSize(this, shader, this.parentElement)) {

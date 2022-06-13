@@ -181,7 +181,8 @@ export class MusicKeyboard {
           // } else {
           //   this.notes[noteNr] = this.music.note(time, 'soft-kbd', 1, noteNr, 1);
           // }
-          this.music.note(time, 'none', 1, noteNr, 1)?.release(time + 1.0,0);
+          let note = this.music.note(time, 'none', 1, noteNr, 1);
+          note && note.release(time + 1.0, 0);
           this.lastNoteNr = noteNr;
         }
       }

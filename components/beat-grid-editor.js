@@ -210,6 +210,6 @@ export class BeatGridEditor extends TimeLineBase {
   }
 
   getShader() {
-    return this.gl.checkUpdateShader('beat-grid-lines', getVertexShader(), getFragmentShader());
+    return this.gl.checkUpdateShader2('beat-grid-lines', getVertexShader, getFragmentShader);
   }
 }
