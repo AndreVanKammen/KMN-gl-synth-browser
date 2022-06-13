@@ -337,23 +337,25 @@ class ControlLineData extends ControlHandlerBase {
 
         let newValue1 = this.mouseDownValue - dy * this.valueRange;
         let newValue2 = this.mouseDownValue2 - dy * this.valueRange;
-        if (newValue2 < 0) {
-          newValue1 -= newValue2;
-          newValue2 = 0;
+        if (newValue2 < this.minValue) {
+          // newValue1 -= newValue2;
+          newValue2 = this.minValue;
         }
-        if (newValue1 < 0) {
-          newValue2 -= newValue1;
-          newValue1 = 0;
+        if (newValue1 < this.minValue) {
+          // newValue2 -= newValue1;
+          newValue1 = this.minValue;
         }
-        let dyCorrection = 0.0;
+        // let dyCorrection = 0.0;
         if (newValue2 > this.maxValue) {
-          dyCorrection = newValue2 - this.maxValue;
+          newValue2 = this.maxValue;
+          // dyCorrection = newValue2 - this.maxValue;
         }
         if (newValue1 > this.maxValue) {
-          dyCorrection = Math.max(dyCorrection,newValue1 - this.maxValue);
+          newValue1 = this.maxValue;
+          // dyCorrection = Math.max(dyCorrection,newValue1 - this.maxValue);
         }
-        newValue1 -= dyCorrection;
-        newValue2 -= dyCorrection;
+        // newValue1 -= dyCorrection;
+        // newValue2 -= dyCorrection;
         this.points[this.selectedLineIx].value = newValue1;
         this.points[this.selectedLineIx + 1].value = newValue2;
 
