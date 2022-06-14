@@ -97,7 +97,9 @@ export class TimeLineBase extends ControlHandlerBase {
   handleLeave(x, y) {
     this.releaseControl();
     this.updateSelect(-1, -1);
-    this.lineInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.lineData, this.lineInfo);
+    if (this.lineData) {
+      this.lineInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.lineData, this.lineInfo);
+    }
   }
   
   handleMove(x, y) {
