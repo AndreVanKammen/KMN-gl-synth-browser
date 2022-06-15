@@ -24,11 +24,11 @@ function getVertexShader(options) {
 
     void main(void) {
       int vId = ${options.vertexIDDisabled ? 'int(round(vertexPosition))' : 'gl_VertexID'};
-      int pointIx = vId / 2;
+      int pointIx = vId;
 
       vec4 lineStart = texelFetch(pointDataTexture, ivec2(pointIx % 1024, pointIx / 1024), 0);
-      pointIx++;
-      vec4 lineEnd = texelFetch(pointDataTexture, ivec2(pointIx % 1024, pointIx / 1024), 0);
+      // pointIx++;
+      // vec4 lineEnd = texelFetch(pointDataTexture, ivec2(pointIx % 1024, pointIx / 1024), 0);
 
       color = lineStart.yzw;
       
@@ -37,13 +37,13 @@ function getVertexShader(options) {
       vec2 pos;
 
       float startX = startTime + float(pointIx) * timeStep;
-      if (subPointIx == 0) {
+      // if (subPointIx == 0) {
         pos.x = startX;
         pos.y = lineStart.x;
-      } else {
-        pos.x = startX + timeStep;
-        pos.y = lineEnd.x;
-      }
+      // } else {
+      //   pos.x = startX + timeStep;
+      //   pos.y = lineEnd.x;
+      // }
 
       pos = (pos - position * 2.0 + 1.0) * scale - 1.0;
 
@@ -233,7 +233,8 @@ export class WavLineView extends ControlHandlerBase {
             // @ts-ignore
             shader.a.vertexPosition.set(this.vertexBuffer, 1 /* elements per vertex */);
           }
-          gl.drawArrays(gl.LINES, 0, (this.pointsLength - 1) * 2.0);
+          // TODO We can go back to using attributes for this, shoulkd be even a little bit faster as vertex pulling
+          gl.drawArrays(gl.LINE_STRIP, 0, this.pointsLength);
           if (this.vertexIDDisabled) {
             shader.a.vertexPosition.dis();
           }
