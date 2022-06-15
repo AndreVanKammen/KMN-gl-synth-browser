@@ -20,7 +20,7 @@ function getVertexShader(options) {
     uniform float startTime;
     uniform float timeStep;
 
-    out float importance;
+    out vec3 color;
 
     void main(void) {
       int vId = ${options.vertexIDDisabled ? 'int(round(vertexPosition))' : 'gl_VertexID'};
@@ -29,25 +29,20 @@ function getVertexShader(options) {
       vec4 lineStart = texelFetch(pointDataTexture, ivec2(pointIx % 1024, pointIx / 1024), 0);
       pointIx++;
       vec4 lineEnd = texelFetch(pointDataTexture, ivec2(pointIx % 1024, pointIx / 1024), 0);
-      float startX = startTime + float(pointIx) * timeStep;
-      
-      lineStart.x = startX;
-      lineEnd.x = startX + timeStep;
 
+      color = lineStart.yzw;
+      
       int subPointIx = vId % 2;
 
-      importance = lineStart.w;
       vec2 pos;
-      if (subPointIx == 0) {
-        pos.x = lineStart.x;
-      } else {
-        pos.x = lineEnd.x;
-      }
 
+      float startX = startTime + float(pointIx) * timeStep;
       if (subPointIx == 0) {
-        pos.y = lineStart.y;
+        pos.x = startX;
+        pos.y = lineStart.x;
       } else {
-        pos.y =lineEnd.y;
+        pos.x = startX + timeStep;
+        pos.y = lineEnd.x;
       }
 
       pos = (pos - position * 2.0 + 1.0) * scale - 1.0;
@@ -65,7 +60,7 @@ function getFragmentShader() {
 
   uniform float lineAlpha;
 
-  in float importance;
+  in vec3 color;
   out vec4 fragColor;
 
   float line(vec2 p, vec2 a, vec2 b)
@@ -80,7 +75,7 @@ function getFragmentShader() {
   const vec3 pointBorderColor = vec3(0.8);
 
   void main(void) {
-    fragColor = vec4(1.0,vec2(importance),lineAlpha);
+    fragColor = vec4(color.rgb,lineAlpha);
   }
   `
 }
@@ -192,10 +187,10 @@ export class WavLineView extends ControlHandlerBase {
       let ofs = 0;
       this.pointsLength = sampleCount;
       for (let ix = startSample; ix < startSample + this.pointsLength; ix++) {
-        data[ofs++] = 0.0;
         data[ofs++] = 0.5 * (wavLeft[ix] + wavRight[ix]);
-        data[ofs++] = 0; // use for hover and stuff
-        data[ofs++] = 1.0;
+        data[ofs++] = 1.0; // R
+        data[ofs++] = 1.0; // G
+        data[ofs++] = 1.0; // B
         // ofs += 4;
       }
     }

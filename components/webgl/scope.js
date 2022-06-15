@@ -78,14 +78,14 @@ mat2x4 getEnergy() {
   vec4 raemR = texelFetch(rms_avg_eng_max_right,
                           ivec2(bufferIx % bufferWidth, 
                           bufferIx / bufferHeight), 0);
-  // raemL.xz = sqrt(raemL.xz);
-  // raemR.xz = sqrt(raemR.xz);
+  raemL.xz = sqrt(raemL.xz);
+  raemR.xz = sqrt(raemR.xz);
   return mat2x4(raemL,raemR);
 }
 `;
 
 const scopeShaderHeaderOutput = baseComponentShaderHeader + /*glsl*/`
-#define volumeScale 0.25
+#define volumeScale 1.0
 
 precision highp sampler2DArray;
 
@@ -102,7 +102,7 @@ float getMax() {
   return value.z;
 }
 mat2x4 getEnergy() {
-  vec4 raem = vec4(value.z*0.5,0.0,value.zz*0.5);
+  vec4 raem = vec4(value.z * 0.03, 0.0, value.z*0.01, value.z);
   return mat2x4(raem,raem);
 }
 `;
