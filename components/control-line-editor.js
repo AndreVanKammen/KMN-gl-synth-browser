@@ -545,7 +545,7 @@ export class ControlLineEditor extends ControlHandlerBase {
  * @param {number} minValue 
  * @param {number} maxValue 
  */
-  setPoints(dataName, points, duration, minValue = 0.0, maxValue = 1.0) {
+  setPoints(dataName, points, duration, minValue = 10000000.0, maxValue = -10000000.0) {
     this.duration = duration;
     /** @type {ControlLineData} */
     let data = this.controlData[dataName];
