@@ -159,7 +159,7 @@ export class AudioView extends ControlHandlerBase {
     this.preScaleRMS = 1.0;
     this.preScaleEng = 1.0;
     this.quadraticCurveMax = 1.0;
-    this.quadraticCurveRMS = 1.0;
+    this.quadraticCurveRMS = 0.5;
     this.quadraticCurveEng = 1.0;
     this.linearDbMixMax = 0.0;
     this.linearDbMixRMS = 0.0;
@@ -174,7 +174,7 @@ export class AudioView extends ControlHandlerBase {
     this.getFragmentShaderBound = this.getFragmentShader.bind(this);
     this.getVertexShaderBound = this.getVertexShader.bind(this);
 
-    this.rekordBoxColors = false;
+    this.rekordBoxColors = true;
   }
 
   get rekordBoxColors() {
