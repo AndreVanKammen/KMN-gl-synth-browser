@@ -78,8 +78,8 @@ mat2x4 getEnergy() {
   vec4 raemR = texelFetch(rms_avg_eng_max_right,
                           ivec2(bufferIx % bufferWidth, 
                           bufferIx / bufferHeight), 0);
-  raemL.xz = sqrt(raemL.xz);
-  raemR.xz = sqrt(raemR.xz);
+  raemL.x = sqrt(raemL.x);
+  raemR.x = sqrt(raemR.x);
   return mat2x4(raemL,raemR);
 }
 `;
