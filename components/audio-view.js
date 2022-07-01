@@ -1,5 +1,6 @@
 import WebGLSynth from "../../KMN-gl-synth.js/webgl-synth.js";
 import PanZoomControl, { ControlHandlerBase } from "../../KMN-utils-browser/pan-zoom-control.js";
+import getWebGLContext from "../../KMN-utils.js/webglutils.js";
 import { RectController } from "../../KMN-varstack-browser/components/webgl/rect-controller.js";
 
 const levelsOfDetail = 32;
@@ -33,6 +34,8 @@ function getFragmentShader(options) {
   precision highp int;
   precision highp sampler2DArray;
 
+  #define bufferWidth 2048
+
   const float pi = 3.141592653589793;
 
   in vec2 textureCoord;
@@ -59,6 +62,7 @@ function getFragmentShader(options) {
   uniform vec3 linearDbMix;
   uniform vec3 dBRange;
 
+  uniform float playPos;
   uniform float opacity;
 
   uniform sampler2D analyzeTexturesLeft;
@@ -138,7 +142,7 @@ function getFragmentShader(options) {
     clr = mix(clr, rmsColor, rmsColor.a * d.g);
     clr = mix(clr, engColor, engColor.a * d.b);
     // float a = max(max(clr.r,clr.g),clr.b) * opacity;
-    fragColor = vec4(clamp(clr.rgb, 0.0,1.0) ,clr.a * opacity);
+    fragColor = vec4(clamp(clr.rgb, 0.0,1.0) * (0.5 + 0.5*step(playPos,textureCoord.x)),clr.a * opacity);
     if (textureCoord.y<0.0) {
       fragColor *= 0.0;
     }
@@ -175,6 +179,9 @@ export class AudioView extends ControlHandlerBase {
     this.getVertexShaderBound = this.getVertexShader.bind(this);
 
     this.rekordBoxColors = true;
+    this.shaderName = 'audio-view';
+    this.clipElement = undefined;
+    this.onGetPlayPos = () => -1;
   }
 
   get rekordBoxColors() {
@@ -200,7 +207,7 @@ export class AudioView extends ControlHandlerBase {
   initializeDOM(parentElement) {
     this.parentElement = parentElement;
 
-    this.canvas = this.options.canvas || this.parentElement.$el({tag:'canvas', cls:'analyzerCanvas'});
+    this.canvas = this.options.canvas || this.parentElement.$el({ tag: 'canvas', cls: 'analyzerCanvas' });
     
     /** @type {PanZoomControl} */
     this.control = this.options.control || new PanZoomControl(this.parentElement, {
@@ -211,14 +218,7 @@ export class AudioView extends ControlHandlerBase {
     });
 
     this.control.addHandler(this);
-  }
-
-  /**
-   * @param {WebGLSynth} synth 
-   */
-  setSynth(synth) {
-    this.synth = synth;
-    const gl = this.gl = synth.gl;
+    const gl = this.gl = getWebGLContext(this.canvas);
 
     // Create two triangles to form a square that covers the whole canvas
     const basic2triangles = [
@@ -233,19 +233,20 @@ export class AudioView extends ControlHandlerBase {
     if (this.options.canvasRoutine) {
       this.canvasRoutine = this.options.canvasRoutine;
     } else {
-      this.canvasRoutine = RectController.geInstance().registerCanvasUpdate('audio-view', this.updateCanvasBound, this.parentElement);
+      this.canvasRoutine = RectController.geInstance().registerCanvasUpdate(this.shaderName, this.updateCanvasBound, this.parentElement);
     }
 
-    this.viewTexture0 = { bufferWidth: this.synth.bufferWidth };
-    this.viewTexture1 = { bufferWidth: this.synth.bufferWidth };
+    this.viewTexture0 = { bufferWidth: 2048 };
+    this.viewTexture1 = { bufferWidth: 2048 };
   }
+
 
   getVertexShader(options) {
     return getVertexShader(options);
   }
 
   getFragmentShader(options) {
-    return this.synth.getDefaultDefines() + getFragmentShader(options);
+    return getFragmentShader(options);
   }
 
   _addLODData(target, len) {
@@ -283,7 +284,7 @@ export class AudioView extends ControlHandlerBase {
     // throw new Error("Method not implemented.");
     const gl = this.gl;
     let sourceLen = ~~(viewData.length/2);
-    let modulus = this.synth.bufferWidth * 4;
+    let modulus = 2048 * 4;
     // let enlargedViewData = new Float32Array(Math.ceil(viewData.length/modulus) * modulus);
 
     // Make buffers twice as big for levelsOfDetail and add levelsof detail as extra because we round up
@@ -328,19 +329,19 @@ export class AudioView extends ControlHandlerBase {
     yOffsetSmooth = this.control.yOffsetSmooth) {
     
     const gl = this.gl;
-    const shader = this.shader = gl.checkUpdateShader2('audio-view', this.getVertexShaderBound, this.getFragmentShaderBound);
+    const shader = this.shader = gl.checkUpdateShader2(this.shaderName, this.getVertexShaderBound, this.getFragmentShaderBound);
 
     if (gl && this.parentElement && this.viewTexture0.texture && this.recordAnalyzeBuffer) {
-      if (gl.updateShaderAndSize(this, shader, this.parentElement)) {
-
+      if (gl.updateShaderAndSize(this, shader, this.parentElement, this.clipElement)) {
+    
         shader.u.offset?.set(this.dataOffset); // this.webglSynth.processCount);s
         shader.u.durationInFragments?.set(this.durationInFragments);
         shader.u.scale?.set(xScaleSmooth, yScaleSmooth);
         shader.u.position?.set(xOffsetSmooth, yOffsetSmooth);
 
-        shader.u.preScale?.set(      this.preScaleMax,       this.preScaleRMS,       this.preScaleEng);
+        shader.u.preScale?.set(this.preScaleMax, this.preScaleRMS, this.preScaleEng);
         shader.u.quadraticCurve?.set(this.quadraticCurveMax, this.quadraticCurveRMS, this.quadraticCurveEng);
-        shader.u.linearDbMix?.set(   this.linearDbMixMax,    this.linearDbMixRMS,    this.linearDbMixEng);
+        shader.u.linearDbMix?.set(this.linearDbMixMax, this.linearDbMixRMS, this.linearDbMixEng);
         shader.u.dBRange?.set(this.dBRangeMax, this.dBRangeRMS, this.dBRangeEng);
 
         // @ts-ignore
@@ -356,6 +357,8 @@ export class AudioView extends ControlHandlerBase {
         shader.u.rmsColor.set.apply(null, this.rmsColor);
         shader.u.engColor.set.apply(null, this.engColor);
       
+        shader.u.playPos.set(this.onGetPlayPos())
+
         gl.activeTexture(gl.TEXTURE10);
         gl.bindTexture(gl.TEXTURE_2D, this.recordAnalyzeBuffer.leftTex);
         gl.uniform1i(shader.u.analyzeTexturesLeft, 10);
