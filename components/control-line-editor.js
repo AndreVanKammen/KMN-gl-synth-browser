@@ -193,6 +193,16 @@ class ControlLineData extends ControlHandlerBase {
     this.color = colors[this.owner.colorIx++ % colors.length];
   }
 
+  updateStateToOwner() {
+    if (this.selectedLineIx >= 0 || this.selectedPointIx > 0) {
+      this.owner.selectedControl = this;
+    } else {
+      if (this.owner.selectedControl === this) {
+        this.owner.selectedControl = null;
+      }
+    }
+  }
+
   /**
    * 
    * @param {{time:number,value:number}[]} points 
@@ -251,6 +261,7 @@ class ControlLineData extends ControlHandlerBase {
     this.points.splice(this.selectedLineIx + 1, 0, { time: newTime, value: newValue });
     this.updatePointData();
     this.selectedPointIx = this.selectedLineIx + 1;
+    this.updateStateToOwner()
   }
 
   handleClick(x, y) {
@@ -406,6 +417,7 @@ class ControlLineData extends ControlHandlerBase {
     if (!this.points) {
       this.selectedLineIx = -1;
       this.selectedPointIx = -1;
+      this.updateStateToOwner()
       return;
     }
 
@@ -467,7 +479,8 @@ class ControlLineData extends ControlHandlerBase {
         }
       }
     }
-    this.selectedPointIx = selectedIx;
+    this.sedPointIx = selectedIx;
+    this.updateStateToOwner()
   }
 
 
@@ -486,6 +499,7 @@ export class ControlLineEditor extends ControlHandlerBase {
     this.colorIx = ~~0;
     /** @type {Record<string,ControlLineData>}*/
     this.controlData = {};
+    this.selectedControl = null;
   }
 
   set isVisible(x) {
