@@ -479,7 +479,7 @@ class ControlLineData extends ControlHandlerBase {
         }
       }
     }
-    this.sedPointIx = selectedIx;
+    this.selectedPointIx = selectedIx;
     this.updateStateToOwner()
   }
 
