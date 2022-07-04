@@ -429,7 +429,7 @@ class ControlLineData extends ControlHandlerBase {
     }
 
     let ofs = 0;
-    let minDist = pointSize;
+    let minDist = pointSize * 2.0;
     let selectedIx = -1;
     let lineIx = -1;
     let lastSdx = 0.0;
