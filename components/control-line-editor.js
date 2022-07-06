@@ -175,14 +175,14 @@ function getFragmentShader() {
   `
 }
 
-class ControlLineData extends ControlHandlerBase {
+export class ControlLineData extends ControlHandlerBase {
   /**
-   * 
-   * @param {ControlLineEditor} owner 
-   * @param {*} gl 
-   * @param {PanZoomBase} control 
+   * @param {ControlLineEditor} owner
+   * @param {*} gl
+   * @param {PanZoomBase} control
+   * @param {string} [dataName]
    */
-  constructor(owner, gl, control) {
+  constructor(owner, gl, control, dataName) {
     super();
 
     this.owner = owner;
@@ -190,6 +190,7 @@ class ControlLineData extends ControlHandlerBase {
     this.control = control;
     this.mouseDownOnPoint = null;
     this.onUpdatePointData = null;
+    this.dataName = dataName;
     this.color = colors[this.owner.colorIx++ % colors.length];
   }
 
@@ -240,7 +241,7 @@ class ControlLineData extends ControlHandlerBase {
     data[ofs++] = data[ofs - 5];
     data[ofs++] = data[ofs - 5];
     data[ofs++] = data[ofs - 5];
-  if (!skipUpdate) {
+    if (!skipUpdate) {
       this.pointInfo = gl.createOrUpdateFloat32TextureBuffer(data, this.pointInfo, 0, ofs);
     }
     if (this.owner.onUpdatePointData) {
@@ -251,7 +252,7 @@ class ControlLineData extends ControlHandlerBase {
     }
   }
 
-  createNewPoint(x,y) {
+  createNewPoint(x, y) {
     let pa = this.points[this.selectedLineIx];
     let pb = this.points[this.selectedLineIx + 1];
     const lineX = this.selectedLineOffset;
@@ -277,7 +278,7 @@ class ControlLineData extends ControlHandlerBase {
     } else if (this.selectedPointIx !== -1) {
       let newClickTime = performance.now();
       // Don't delete 1st or last point
-      if (this.selectedPointIx !== 0 && this.selectedPointIx < this.points.length-1) {
+      if (this.selectedPointIx !== 0 && this.selectedPointIx < this.points.length - 1) {
         if (this.lastClickTime && ((newClickTime - this.lastClickTime) < 400)) {
           this.points.splice(this.selectedPointIx, 1);
           this.updatePointData();
@@ -295,15 +296,15 @@ class ControlLineData extends ControlHandlerBase {
     return this.selectedLineIx !== -1 || this.selectedPointIx !== -1;
   }
   
-  handleDown(x,y) {
-    this.updateSelect(x,y);
+  handleDown(x, y) {
+    this.updateSelect(x, y);
     if (this.selectedLineIx !== -1 && this.control.event.ctrlKey) {
-      this.createNewPoint(x,y);
+      this.createNewPoint(x, y);
       return true;
     }
     if (this.selectedPointIx >= 0 || this.selectedLineIx !== -1) {
       this.captureControl();
-      this.mouseDownOnPoint = {x,y};
+      this.mouseDownOnPoint = { x, y };
       this.mouseDownMinTime = 0;
       this.mouseDownMaxTime = this.owner.duration;
       if (this.selectedPointIx >= 0) {
@@ -312,7 +313,7 @@ class ControlLineData extends ControlHandlerBase {
         }
       
         if (this.selectedPointIx < this.points.length - 1) {
-          this.mouseDownMaxTime = this.points[this.selectedPointIx+1].time;
+          this.mouseDownMaxTime = this.points[this.selectedPointIx + 1].time;
         }
         this.mouseDownTime = this.points[this.selectedPointIx].time;
         this.mouseDownValue = this.points[this.selectedPointIx].value;
@@ -380,18 +381,18 @@ class ControlLineData extends ControlHandlerBase {
           dx = 0;
         }
         let newTime = this.mouseDownTime - dx * this.owner.duration;
-        newTime = Math.min(Math.max(newTime, this.mouseDownMinTime),this.mouseDownMaxTime);
+        newTime = Math.min(Math.max(newTime, this.mouseDownMinTime), this.mouseDownMaxTime);
         this.points[this.selectedPointIx].time = newTime;
   
         let newValue = this.mouseDownValue - dy * this.valueRange;
-        newValue = Math.min(Math.max(newValue, this.minValue),this.maxValue);
+        newValue = Math.min(Math.max(newValue, this.minValue), this.maxValue);
         this.points[this.selectedPointIx].value = newValue;
   
         this.updatePointData(true);
         this.pointData[this.selectedPointIx * 4 + 2] = 1.0;
       }
     } else {
-      this.updateSelect(x,y);
+      this.updateSelect(x, y);
     }
     this.pointInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.pointData, this.pointInfo);
     let isSelected = this.selectedPointIx !== -1 || this.selectedLineIx !== -1;
@@ -402,17 +403,18 @@ class ControlLineData extends ControlHandlerBase {
     }
     return isSelected;
   }
-  handleUp(x,y) {
+  handleUp(x, y) {
     this.releaseControl();
     this.mouseDownOnPoint = null;
+    this.owner.onControlDataUpdate(this);
     return false;
   }
-  handleKey(x,y, up) {
-    this.updateSelect(x,y);
+  handleKey(x, y, up) {
+    this.updateSelect(x, y);
     this.pointInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.pointData, this.pointInfo);
     return false;
   }
-  updateSelect(x,y) {
+  updateSelect(x, y) {
     const pointSize = 10.0;
     if (!this.points) {
       this.selectedLineIx = -1;
@@ -482,8 +484,6 @@ class ControlLineData extends ControlHandlerBase {
     this.selectedPointIx = selectedIx;
     this.updateStateToOwner()
   }
-
-
 }
 export class ControlLineEditor extends ControlHandlerBase {
   constructor(options) {
@@ -493,6 +493,9 @@ export class ControlLineEditor extends ControlHandlerBase {
     this.width = 10;
     this.height = 10;
     this.mouseDownOnPoint = null;
+    /** @type {(ControlLineData) => void} */
+    this.onControlDataUpdate = (lineData) => { };
+
     this.onUpdatePointData = null;
     this.updateDefered = false;
     this.handlePointDataUpdatedBound = this.handlePointDataUpdated.bind(this);
@@ -564,7 +567,7 @@ export class ControlLineEditor extends ControlHandlerBase {
     /** @type {ControlLineData} */
     let data = this.controlData[dataName];
     if (!data) {
-      data = new ControlLineData(this, this.gl, this.control);
+      data = new ControlLineData(this, this.gl, this.control, dataName);
       data.isVisible = this._isVisible;
       data.isEnabled = this._isEnabled;
       this.control.addHandler(data);
