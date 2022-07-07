@@ -137,13 +137,13 @@ export class WavLineView extends ControlHandlerBase {
     if (this.track !== track || !this.leftSamples) {
       this.track = track;
       if (!this.track) {
-        return 
+        return false;
       }
       this.leftSamples = track.leftSamples;
       this.rightSamples = track.rightSamples;
       this.sampleRate = track.sampleRate;
       if (!this.leftSamples) {
-        return 
+        return false;
       }
       this.duration = this.leftSamples.length / this.sampleRate;
     }

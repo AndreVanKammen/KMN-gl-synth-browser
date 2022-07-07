@@ -1,6 +1,6 @@
 import PanZoomControl, { ControlHandlerBase, PanZoomBase, PanZoomParent } from "../../KMN-utils-browser/pan-zoom-control.js";
 import defer from "../../KMN-utils.js/defer.js";
-import getWebGLContext from "../../KMN-utils.js/webglutils.js";
+import getWebGLContext, { RenderingContextWithUtils } from "../../KMN-utils.js/webglutils.js";
 import { RectController } from "../../KMN-varstack-browser/components/webgl/rect-controller.js";
 // 0 1
 // 2
@@ -186,12 +186,21 @@ export class ControlLineData extends ControlHandlerBase {
     super();
 
     this.owner = owner;
+    /** @type {RenderingContextWithUtils} */
     this.gl = gl;
     this.control = control;
     this.mouseDownOnPoint = null;
     this.onUpdatePointData = null;
     this.dataName = dataName;
     this.color = colors[this.owner.colorIx++ % colors.length];
+  }
+
+  dispose() {
+    this.owner = null;
+    this.mouseDownOnPoint = null;
+    this.onUpdatePointData = null;
+    this.gl.deleteFloat32TextureBuffer(this.pointInfo);
+    this.pointData = null;
   }
 
   updateStateToOwner() {
@@ -574,6 +583,15 @@ export class ControlLineEditor extends ControlHandlerBase {
       this.controlData[dataName] = data;
     }
     data.setPoints(points, minValue, maxValue);
+  }
+
+  clearAll() {
+    for (let data of Object.values(this.controlData)) {
+      this.control.removeHandler(data);
+      data.dispose();
+    }
+    this.controlData = {};
+    this.colorIx = 0;
   }
 
   updateCanvas() {
