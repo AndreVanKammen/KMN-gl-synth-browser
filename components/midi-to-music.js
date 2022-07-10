@@ -60,11 +60,15 @@ export class MidiToMusic {
       // So here is a strange decision, pitch goes from 0 - 127
       // That would make 63.5 the center value but according to
       // specs it is 64. That would make for a strange balance
-      // because there are 63 values for up but 64 (0..63) for 
+      // because there are 63 values for up but 64 (0..63) for
       // down i tried to fix it like this, but don't know if it is correct
-      // Read somwhere else that up is almost so that misses the last value 
+      // Read somwhere else that up is almost so that misses the last value
       // if no lsb i guess which my latest kbd tries to 
-      let val =  (value + Math.max(0.0,(value - 64) * (1/63))) / 64 - 1.0
+      // lsb is in note 
+      value += note / 128;
+      // let val =  (value + Math.max(0.0,(value - 64) * (1/63))) / 64 - 1.0
+      let val = value / 64 - 1.0;
+      // console.log(value,note,val);
 
       // TODO implement LSB for pitchwheel (my keyboard doesn't have it but 
       // some might) It also could solve the inaacuracy problem above because 

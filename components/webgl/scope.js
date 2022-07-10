@@ -349,7 +349,7 @@ export class Scope extends BaseBinding {
     }
   }
 
-  remove() {
+  dispose() {
     if (this._sliderInfo) {
       this._componentInfo.freeRectInfo(this._sliderInfo);
       this._sliderInfo = undefined;
