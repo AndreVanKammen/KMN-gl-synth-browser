@@ -173,6 +173,7 @@ export class AudioView extends ControlHandlerBase {
     this.dBRangeEng = 90.0;
     this.levelOfDetail = 2.7;
     this.opacity = 1.0
+    this._opacitySmooth = 1.0
     this.showBeats = false;
     this.showMaxOnly = false;
     this.getFragmentShaderBound = this.getFragmentShader.bind(this);
@@ -322,6 +323,11 @@ export class AudioView extends ControlHandlerBase {
     this.durationInFragments = durationInFragments;
   }
 
+  get opacitySmooth() {
+    this._opacitySmooth = this._opacitySmooth * 0.99 + 0.01 * this.opacity;
+    return this._opacitySmooth;
+  }
+
   updateCanvas(
     xScaleSmooth = this.control.xScaleSmooth,
     yScaleSmooth = this.control.yScaleSmooth,
@@ -344,8 +350,7 @@ export class AudioView extends ControlHandlerBase {
         shader.u.linearDbMix?.set(this.linearDbMixMax, this.linearDbMixRMS, this.linearDbMixEng);
         shader.u.dBRange?.set(this.dBRangeMax, this.dBRangeRMS, this.dBRangeEng);
 
-        // @ts-ignore
-        shader.u.opacity?.set(this.opacity);
+        shader.u.opacity?.set(this.opacitySmooth);
         shader.u.showMaxOnly?.set(~~this.showMaxOnly);
 
         if (shader.u["LODOffsets[0]"]) {

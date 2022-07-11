@@ -226,7 +226,7 @@ export class WavLineView extends ControlHandlerBase {
           shader.u.duration?.set(this.duration);
           shader.u.startTime?.set(this.startTime / this.duration * 2.0 - 1.0);
           shader.u.timeStep?.set(this.timeStep / this.duration * 2.0);
-          shader.u.lineAlpha?.set(1.0 - Math.max(0.0, Math.pow(durationOnScreen / this.durationTreshhold,0.33) - 0.2 ));
+          shader.u.lineAlpha?.set(1.0 - Math.max(0.0, Math.pow(durationOnScreen / this.durationTreshhold,0.03) -0.1 ));
     
           if (this.vertexIDDisabled) {
             shader.a.vertexPosition.en();
