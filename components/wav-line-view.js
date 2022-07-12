@@ -94,7 +94,7 @@ export class WavLineView extends ControlHandlerBase {
     this.pointData = new Float32Array(Math.ceil(this.maxSamples * 4.0 / 4096) * 4096);
     this.sampleRate = 44100;
     this.track = null;
-    this.durationTreshhold = 2.0;
+    this.durationTreshhold = 3.0;
     this.onGetAudioTrack = (sender) => this.track;
   }
 
@@ -228,7 +228,7 @@ export class WavLineView extends ControlHandlerBase {
           shader.u.timeStep?.set(this.timeStep / this.duration * 2.0);
           // shader.u.lineAlpha?.set(1.0 - Math.max(0.0,
           //  Math.pow(durationOnScreen / this.parentElement.clientWidth * 10000.0, 1.0)));
-          shader.u.lineAlpha?.set(1.0 / Math.pow(durationOnScreen / this.parentElement.clientWidth * 100000.0, 1.0/2.2));
+          shader.u.lineAlpha?.set(1.0 / Math.pow(durationOnScreen / this.parentElement.clientWidth * 100000.0, 0.33));
       // console.log(1.0 - Math.max(0.0,Math.pow(durationOnScreen / this.parentElement.clientWidth * 1000.0, 1.0)))
           if (this.vertexIDDisabled) {
             shader.a.vertexPosition.en();

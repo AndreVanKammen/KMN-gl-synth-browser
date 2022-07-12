@@ -115,7 +115,9 @@ export class TimeLineBase extends ControlHandlerBase {
     } else {
       this.updateSelect(x, y);
     }
-    this.lineInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.lineData, this.lineInfo);
+    if (this.lineData) {
+      this.lineInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.lineData, this.lineInfo);
+    }
     return this.selectedPointIx !== -1;
   }
 
