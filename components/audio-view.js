@@ -1,7 +1,7 @@
 import WebGLSynth from "../../KMN-gl-synth.js/webgl-synth.js";
 import PanZoomControl, { ControlHandlerBase } from "../../KMN-utils-browser/pan-zoom-control.js";
 import getWebGLContext from "../../KMN-utils.js/webglutils.js";
-import { RectController } from "../../KMN-varstack-browser/components/webgl/rect-controller.js";
+import { RenderControl } from "../../KMN-varstack-browser/components/webgl/render-control.js";
 
 const levelsOfDetail = 32;
 
@@ -234,7 +234,7 @@ export class AudioView extends ControlHandlerBase {
     if (this.options.canvasRoutine) {
       this.canvasRoutine = this.options.canvasRoutine;
     } else {
-      this.canvasRoutine = RectController.geInstance().registerCanvasUpdate(this.shaderName, this.updateCanvasBound, this.parentElement);
+      this.canvasRoutine = RenderControl.geInstance().registerCanvasUpdate(this.shaderName, this.updateCanvasBound, this.parentElement);
     }
 
     this.viewTexture0 = { bufferWidth: 2048 };

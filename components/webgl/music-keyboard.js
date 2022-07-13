@@ -1,4 +1,4 @@
-import { ComponentInfo, getElementHash, RectInfo, RectController, baseComponentShaderHeader, baseComponentShaderFooter } from "../../../KMN-varstack-browser/components/webgl/rect-controller.js";
+import { ComponentInfo, getElementHash, RectInfo, RenderControl, baseComponentShaderHeader, baseComponentShaderFooter } from "../../../KMN-varstack-browser/components/webgl/render-control.js";
 import { PointerTracker } from "../../../KMN-utils-browser/pointer-tracker.js";
 import { getKeyNr } from "./music-keyboard-sdr.js";
 import { MusicInterface, NoteInterface } from "../../interfaces/music-interface.js";
@@ -96,7 +96,7 @@ vec4 renderComponent(vec2 center, vec2 size) {
 
 
 export class MusicKeyboard {
-  _controller = RectController.geInstance();
+  _controller = RenderControl.geInstance();
   
   /**
    * @param {HTMLElement} element

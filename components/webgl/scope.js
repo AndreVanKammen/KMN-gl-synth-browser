@@ -1,6 +1,6 @@
 import { BaseBinding } from "../../../KMN-varstack.js/vars/base.js";
 import { FloatVar } from "../../../KMN-varstack.js/vars/float.js";
-import { ComponentInfo, getElementHash, RectInfo, RectController, baseComponentShaderHeader, baseComponentShaderFooter } from "../../../KMN-varstack-browser/components/webgl/rect-controller.js";
+import { ComponentInfo, getElementHash, RectInfo, RenderControl, baseComponentShaderHeader, baseComponentShaderFooter } from "../../../KMN-varstack-browser/components/webgl/render-control.js";
 import { StringVar } from "../../../KMN-varstack.js/vars/string.js";
 import { SynthMixer } from "../../../KMN-gl-synth.js/webgl-synth-data.js";
 import WebGLSynth from "../../../KMN-gl-synth.js/webgl-synth.js";
@@ -107,7 +107,7 @@ mat2x4 getEnergy() {
 }
 `;
 export class MixerScope {
-  _controller = RectController.geInstance();
+  _controller = RenderControl.geInstance();
   
   /** 
    * @param {HTMLElement} element
@@ -233,7 +233,7 @@ export class MixerScope {
 
 // TODO: Change to make use of MixerScope
 export class Scope extends BaseBinding {
-  _controller = RectController.geInstance();
+  _controller = RenderControl.geInstance();
   
   /** 
    * @param {StringVar} instrumentName 

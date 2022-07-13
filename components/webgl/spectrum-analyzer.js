@@ -1,6 +1,6 @@
 import { SynthMixer } from "../../../KMN-gl-synth.js/webgl-synth-data.js";
 import WebGLSynth from "../../../KMN-gl-synth.js/webgl-synth.js";
-import { baseComponentShaderFooter, ComponentInfo, getElementHash, RectController, RectInfo } from "../../../KMN-varstack-browser/components/webgl/rect-controller.js";
+import { baseComponentShaderFooter, ComponentInfo, getElementHash, RenderControl, RectInfo } from "../../../KMN-varstack-browser/components/webgl/render-control.js";
 import { getLogFloatLoudnessMap, getFrequencyForNote, getVolumeForFrequency, getLinearFloatLoudnessMap } from "../../../KMN-gl-synth.js/frequency-utils.js";
 import { scopeShaderHeader } from "./scope.js";
 
@@ -137,7 +137,7 @@ vec4 renderComponent(vec2 center, vec2 size) {
 
 // TODO: Change to make use of MixerScope(Base)
 export class SpectrumAnalyzer {
-  _controller = RectController.geInstance();
+  _controller = RenderControl.geInstance();
   
   /** 
    * @param {HTMLElement} element

@@ -1,6 +1,6 @@
 import PanZoomControl, { ControlHandlerBase } from "../../KMN-utils-browser/pan-zoom-control.js";
 import getWebGLContext, { getVertexIDDiabled } from "../../KMN-utils.js/webglutils.js";
-import { RectController } from "../../KMN-varstack-browser/components/webgl/rect-controller.js";
+import { RenderControl } from "../../KMN-varstack-browser/components/webgl/render-control.js";
 
 function getVertexShader(options) {
   return /*glsl*/`precision highp float;
@@ -120,7 +120,7 @@ export class WavLineView extends ControlHandlerBase {
     if (this.options.canvasRoutine) {
       this.canvasRoutine = this.options.canvasRoutine;
     } else {
-      this.canvasRoutine = RectController.geInstance().registerCanvasUpdate('wav-line', this.updateCanvasBound, this.parentElement);
+      this.canvasRoutine = RenderControl.geInstance().registerCanvasUpdate('wav-line', this.updateCanvasBound, this.parentElement);
     }
 
     this.vertexIDDisabled = getVertexIDDiabled();

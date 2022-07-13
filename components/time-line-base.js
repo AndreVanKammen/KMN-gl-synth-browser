@@ -1,6 +1,6 @@
 import PanZoomControl, { ControlHandlerBase } from "../../KMN-utils-browser/pan-zoom-control.js";
 import getWebGLContext from "../../KMN-utils.js/webglutils.js";
-import { RectController } from "../../KMN-varstack-browser/components/webgl/rect-controller.js";
+import { RenderControl } from "../../KMN-varstack-browser/components/webgl/render-control.js";
 // 0 1
 // 2
 // 2 1 3 4 
@@ -48,7 +48,7 @@ export class TimeLineBase extends ControlHandlerBase {
     if (this.options.canvasRoutine) {
       this.canvasRoutine = this.options.canvasRoutine;
     } else {
-      this.canvasRoutine = RectController.geInstance().registerCanvasUpdate('time-line', this.updateCanvasBound, this.parentElement);
+      this.canvasRoutine = RenderControl.geInstance().registerCanvasUpdate('time-line', this.updateCanvasBound, this.parentElement);
     }
   }
 
