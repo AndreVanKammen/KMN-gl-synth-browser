@@ -511,6 +511,7 @@ export class ControlLineEditor extends ControlHandlerBase {
     this.colorIx = ~~0;
     /** @type {Record<string,ControlLineData>}*/
     this.controlData = {};
+    /** @type {ControlLineData} */
     this.selectedControl = null;
   }
 
