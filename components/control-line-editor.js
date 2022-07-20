@@ -193,6 +193,7 @@ export class ControlLineData extends ControlHandlerBase {
     this.onUpdatePointData = null;
     this.dataName = dataName;
     this.color = colors[this.owner.colorIx++ % colors.length];
+    this.valueSnaps = [];
   }
 
   dispose() {
@@ -215,21 +216,23 @@ export class ControlLineData extends ControlHandlerBase {
 
   /**
    * 
-   * @param {{time:number,value:number}[]} points 
-   * @param {number} minValue 
-   * @param {number} maxValue 
+   * @param {{time:number,value:number}[]} points
+   * @param {number} minValue
+   * @param {number} maxValue
+   * @param {number} defaultValue
    */
-  setPoints(points, minValue = 0.0, maxValue = 1.0) {
+  setPoints(points, minValue = 0.0, maxValue = 1.0, defaultValue = 1.0) {
     this.points = points;
     
     this.minValue = minValue;
     this.maxValue = maxValue
-
+    this.defaultValue = defaultValue;
     for (const point of this.points) {
       this.minValue = Math.min(this.minValue, point.value);
       this.maxValue = Math.max(this.maxValue, point.value);
     }
     this.valueRange = this.maxValue - this.minValue;
+    this.valueSnapDist = this.valueRange * 0.03;
 
     this.updatePointData();
   }
@@ -317,13 +320,16 @@ export class ControlLineData extends ControlHandlerBase {
       this.mouseDownMinTime = 0;
       this.mouseDownMaxTime = this.owner.duration;
       if (this.selectedPointIx >= 0) {
+        this.valueSnaps = [this.defaultValue];
         if (this.selectedPointIx > 0) {
           this.mouseDownMinTime = this.points[this.selectedPointIx - 1].time;
+          this.valueSnaps.push(this.points[this.selectedPointIx - 1].value)
         }
-      
         if (this.selectedPointIx < this.points.length - 1) {
           this.mouseDownMaxTime = this.points[this.selectedPointIx + 1].time;
+          this.valueSnaps.push(this.points[this.selectedPointIx + 1].value)
         }
+        console.log(this.defaultValue, this.minValue, this.maxValue, this.valueSnaps);
         this.mouseDownTime = this.points[this.selectedPointIx].time;
         this.mouseDownValue = this.points[this.selectedPointIx].value;
 
@@ -341,6 +347,7 @@ export class ControlLineData extends ControlHandlerBase {
     }
     return this.selectedPointIx !== -1 || this.selectedLineIx !== -1;
   }
+
   handleLeave(x, y) {
     this.releaseControl();
     this.blur();
@@ -395,6 +402,21 @@ export class ControlLineData extends ControlHandlerBase {
   
         let newValue = this.mouseDownValue - dy * this.valueRange;
         newValue = Math.min(Math.max(newValue, this.minValue), this.maxValue);
+
+        let minDist = 100000000.0;
+        let snapIx = -1;
+        for (let ix = 0; ix <= this.valueSnaps.length; ix++) {
+          let v = this.valueSnaps[ix];
+          let dist = Math.abs(newValue - v);
+          if (dist < this.valueSnapDist) {
+            minDist = dist;
+            snapIx = ix;
+          }
+        }
+        if (snapIx >= 0) {
+          newValue = this.valueSnaps[snapIx];
+        }
+
         this.points[this.selectedPointIx].value = newValue;
   
         this.updatePointData(true);
@@ -566,13 +588,13 @@ export class ControlLineEditor extends ControlHandlerBase {
 
 /**
  * 
- * @param {string} dataName 
- * @param {{time:number,value:number}[]} points 
- * @param {number} duration 
- * @param {number} minValue 
- * @param {number} maxValue 
+ * @param {string} dataName
+ * @param {{time:number,value:number}[]} points
+ * @param {number} duration
+ * @param {number} minValue
+ * @param {number} defaultValue
  */
-  setPoints(dataName, points, duration, minValue = 10000000.0, maxValue = -10000000.0) {
+  setPoints(dataName, points, duration, minValue = 10000000.0, maxValue = -10000000.0, defaultValue = 1.0) {
     this.duration = duration;
     /** @type {ControlLineData} */
     let data = this.controlData[dataName];
@@ -583,7 +605,7 @@ export class ControlLineEditor extends ControlHandlerBase {
       this.control.addHandler(data);
       this.controlData[dataName] = data;
     }
-    data.setPoints(points, minValue, maxValue);
+    data.setPoints(points, minValue, maxValue, defaultValue);
   }
 
   clearAll() {
