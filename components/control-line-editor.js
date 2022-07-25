@@ -99,6 +99,7 @@ function getFragmentShader() {
   uniform float dpr;
   uniform vec3 lineColor;
   uniform float pointSize;
+  uniform float opacity;
 
   flat in vec4 lineStart;
   flat in vec4 lineEnd;
@@ -170,6 +171,7 @@ function getFragmentShader() {
     if (color.a > 0.001) {
       color.rgb = min(color.rgb / (color.a + 0.01), 1.0);
     }
+    color.a *= opacity;
     fragColor = pow(color.rgba,vec4(1.0/2.2));
   }
   `
@@ -535,6 +537,7 @@ export class ControlLineEditor extends ControlHandlerBase {
     this.controlData = {};
     /** @type {ControlLineData} */
     this.selectedControl = null;
+    this.opacity = 1.0;
   }
 
   set isVisible(x) {
@@ -647,6 +650,7 @@ export class ControlLineEditor extends ControlHandlerBase {
             gl.uniform1i(shader.u.pointDataTexture, 2);
             gl.activeTexture(gl.TEXTURE0);
           }
+          shader.u.opacity?.set(this.opacity);
           gl.drawArrays(gl.TRIANGLES, 0, (data.points.length) * 6.0);
         }
       }
