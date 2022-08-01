@@ -10,7 +10,8 @@ function getVertexShader(options) {
     in vec2 vertexPosition;
     out vec2 textureCoord;
     flat out float fragmentsPerPixel;
-    
+    flat out float beatOpacity;
+
     uniform float durationInFragments;
     uniform vec2 scale;
     uniform vec2 position;
@@ -23,6 +24,7 @@ function getVertexShader(options) {
       // Never draw outside the pan zoom area, viewport will handle textureCoord outside
       pos = (pos - position * 2.0 + 1.0) * scale - 1.0;
       fragmentsPerPixel = durationInFragments / (scale.x * windowSize.x);
+      beatOpacity = 1.0;
       gl_Position = vec4(pos, 0.0, 1.0);
     }`
 }
@@ -40,6 +42,7 @@ function getFragmentShader(options) {
 
   in vec2 textureCoord;
   flat in float fragmentsPerPixel;
+  flat in float beatOpacity;
   out vec4 fragColor;
 
   uniform vec2 scale;
@@ -146,6 +149,7 @@ function getFragmentShader(options) {
     if (textureCoord.y<0.0) {
       fragColor *= 0.0;
     }
+    fragColor.a *= beatOpacity;
   }
   `
 }
