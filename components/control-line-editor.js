@@ -222,13 +222,15 @@ export class ControlLineData extends ControlHandlerBase {
    * @param {number} minValue
    * @param {number} maxValue
    * @param {number} defaultValue
+   * @param {number} timeOffset
    */
-  setPoints(points, minValue = 0.0, maxValue = 1.0, defaultValue = 1.0) {
+  setPoints(points, minValue = 0.0, maxValue = 1.0, defaultValue = 1.0, timeOffset = 0) {
     this.points = points;
     
     this.minValue = minValue;
     this.maxValue = maxValue
     this.defaultValue = defaultValue;
+    this.timeOffset = timeOffset
     for (const point of this.points) {
       this.minValue = Math.min(this.minValue, point.value);
       this.maxValue = Math.max(this.maxValue, point.value);
@@ -245,7 +247,8 @@ export class ControlLineData extends ControlHandlerBase {
     const data = this.pointData = new Float32Array(Math.ceil((this.points.length + 1) * 4.0 / 4096) * 4096);
     let ofs = 0;
     for (const point of this.points) {
-      data[ofs++] = (point.time / this.owner.duration) * 2.0 - 1.0;
+      let time = point.time + this.timeOffset;
+      data[ofs++] = (time / this.owner.duration) * 2.0 - 1.0;
       data[ofs++] = (point.value - this.minValue) / this.valueRange * 2.0 - 1.0;
       data[ofs++] = 0; // use for hover and stuff
       data[ofs++] = 0;
@@ -596,8 +599,9 @@ export class ControlLineEditor extends ControlHandlerBase {
  * @param {number} duration
  * @param {number} minValue
  * @param {number} defaultValue
+ * @param {number} timeOffset
  */
-  setPoints(dataName, points, duration, minValue = 10000000.0, maxValue = -10000000.0, defaultValue = 1.0) {
+  setPoints(dataName, points, duration, minValue = 10000000.0, maxValue = -10000000.0, defaultValue = 1.0, timeOffset = 0.0) {
     this.duration = duration;
     /** @type {ControlLineData} */
     let data = this.controlData[dataName];
@@ -608,7 +612,7 @@ export class ControlLineEditor extends ControlHandlerBase {
       this.control.addHandler(data);
       this.controlData[dataName] = data;
     }
-    data.setPoints(points, minValue, maxValue, defaultValue);
+    data.setPoints(points, minValue, maxValue, defaultValue, timeOffset);
   }
 
   clearAll() {
