@@ -280,6 +280,7 @@ export class ControlLineData extends ControlHandlerBase {
     this.updatePointData();
     this.selectedPointIx = this.selectedLineIx + 1;
     this.updateStateToOwner()
+    this.owner.onControlDataUpdate(this);
   }
 
   handleClick(x, y) {
@@ -299,6 +300,7 @@ export class ControlLineData extends ControlHandlerBase {
         if (this.lastClickTime && ((newClickTime - this.lastClickTime) < 400)) {
           this.points.splice(this.selectedPointIx, 1);
           this.updatePointData();
+          this.owner.onControlDataUpdate(this);
         }
       }
       this.lastClickTime = newClickTime;
@@ -319,6 +321,7 @@ export class ControlLineData extends ControlHandlerBase {
       this.createNewPoint(x, y);
       return true;
     }
+    this.pointsChanged = false;
     if (this.selectedPointIx >= 0 || this.selectedLineIx !== -1) {
       this.captureControl();
       this.mouseDownOnPoint = { x, y };
@@ -361,7 +364,21 @@ export class ControlLineData extends ControlHandlerBase {
       this.pointInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.pointData, this.pointInfo);
     }
   }
-  
+
+  updatePointValue(ix, value) {
+    if (this.points[ix].value !== value) {
+      this.points[ix].value = value;
+      this.pointsChanged = true;
+    }
+  }
+
+  updatePointTime(ix, time) {
+    if (this.points[ix].time !== time) {
+      this.points[ix].time = time;
+      this.pointsChanged = true;
+    }
+  }
+
   handleMove(x, y) {
     if (this.mouseDownOnPoint) {
       let dx = this.mouseDownOnPoint.x - x;
@@ -389,8 +406,8 @@ export class ControlLineData extends ControlHandlerBase {
         }
         // newValue1 -= dyCorrection;
         // newValue2 -= dyCorrection;
-        this.points[this.selectedLineIx].value = newValue1;
-        this.points[this.selectedLineIx + 1].value = newValue2;
+        this.updatePointValue(this.selectedLineIx, newValue1);
+        this.updatePointValue(this.selectedLineIx + 1, newValue2);
 
         this.updatePointData(true);
 
@@ -403,7 +420,7 @@ export class ControlLineData extends ControlHandlerBase {
         }
         let newTime = this.mouseDownTime - dx * this.owner.duration;
         newTime = Math.min(Math.max(newTime, this.mouseDownMinTime), this.mouseDownMaxTime);
-        this.points[this.selectedPointIx].time = newTime;
+        this.updatePointTime(this.selectedPointIx, newTime);
   
         let newValue = this.mouseDownValue - dy * this.valueRange;
         newValue = Math.min(Math.max(newValue, this.minValue), this.maxValue);
@@ -422,7 +439,7 @@ export class ControlLineData extends ControlHandlerBase {
           newValue = this.valueSnaps[snapIx];
         }
 
-        this.points[this.selectedPointIx].value = newValue;
+        this.updatePointValue(this.selectedPointIx, newValue);
   
         this.updatePointData(true);
         this.pointData[this.selectedPointIx * 4 + 2] = 1.0;
@@ -442,7 +459,9 @@ export class ControlLineData extends ControlHandlerBase {
   handleUp(x, y) {
     this.releaseControl();
     this.mouseDownOnPoint = null;
-    this.owner.onControlDataUpdate(this);
+    if (this.pointsChanged) {
+      this.owner.onControlDataUpdate(this);
+    }
     return false;
   }
   handleKey(x, y, up) {
