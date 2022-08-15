@@ -209,6 +209,7 @@ export class ControlLineData extends ControlHandlerBase {
   updateStateToOwner() {
     if (this.selectedLineIx >= 0 || this.selectedPointIx > 0) {
       this.owner.selectedControl = this;
+      console.trace('Set selected');
     } else {
       if (this.owner.selectedControl === this) {
         this.owner.selectedControl = null;
@@ -359,7 +360,8 @@ export class ControlLineData extends ControlHandlerBase {
   handleLeave(x, y) {
     this.releaseControl();
     this.blur();
-    this.updateSelect(-1, -1);
+    this.selectedLineIx = -1;
+    this.selectedPointIx = -1;
     if (this.pointData) {
       this.pointInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.pointData, this.pointInfo);
     }
