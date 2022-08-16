@@ -209,7 +209,6 @@ export class ControlLineData extends ControlHandlerBase {
   updateStateToOwner() {
     if (this.selectedLineIx >= 0 || this.selectedPointIx > 0) {
       this.owner.selectedControl = this;
-      console.trace('Set selected');
     } else {
       if (this.owner.selectedControl === this) {
         this.owner.selectedControl = null;
@@ -368,6 +367,7 @@ export class ControlLineData extends ControlHandlerBase {
   }
 
   updatePointValue(ix, value) {
+    // console.log('value:',ix, this.points[ix].value, value);
     if (this.points[ix].value !== value) {
       this.points[ix].value = value;
       this.pointsChanged = true;
@@ -375,6 +375,7 @@ export class ControlLineData extends ControlHandlerBase {
   }
 
   updatePointTime(ix, time) {
+    // console.log('time:',ix, this.points[ix].value, time);
     if (this.points[ix].time !== time) {
       this.points[ix].time = time;
       this.pointsChanged = true;
@@ -410,7 +411,6 @@ export class ControlLineData extends ControlHandlerBase {
         // newValue2 -= dyCorrection;
         this.updatePointValue(this.selectedLineIx, newValue1);
         this.updatePointValue(this.selectedLineIx + 1, newValue2);
-
         this.updatePointData(true);
 
         this.pointData[this.selectedLineIx * 4 + 2] = 1.0;
