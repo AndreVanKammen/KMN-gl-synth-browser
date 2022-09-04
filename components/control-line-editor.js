@@ -280,7 +280,7 @@ export class ControlLineData extends ControlHandlerBase {
     this.updatePointData();
     this.selectedPointIx = this.selectedLineIx + 1;
     this.updateStateToOwner()
-    this.owner.onControlDataUpdate(this);
+    this.owner.controlDataUpdate(this);
   }
 
   handleClick(x, y) {
@@ -300,7 +300,7 @@ export class ControlLineData extends ControlHandlerBase {
         if (this.lastClickTime && ((newClickTime - this.lastClickTime) < 400)) {
           this.points.splice(this.selectedPointIx, 1);
           this.updatePointData();
-          this.owner.onControlDataUpdate(this);
+          this.owner.controlDataUpdate(this);
         }
       }
       this.lastClickTime = newClickTime;
@@ -462,7 +462,7 @@ export class ControlLineData extends ControlHandlerBase {
     this.releaseControl();
     this.mouseDownOnPoint = null;
     if (this.pointsChanged) {
-      this.owner.onControlDataUpdate(this);
+      this.owner.controlDataUpdate(this);
     }
     return false;
   }
@@ -550,8 +550,6 @@ export class ControlLineEditor extends ControlHandlerBase {
     this.width = 10;
     this.height = 10;
     this.mouseDownOnPoint = null;
-    /** @type {(ControlLineData) => void} */
-    this.onControlDataUpdate = (lineData) => { };
 
     this.onUpdatePointData = null;
     this.updateDefered = false;
@@ -564,6 +562,13 @@ export class ControlLineEditor extends ControlHandlerBase {
     this.opacity = 1.0;
   }
 
+  /**
+   * 
+   * @param {ControlLineData} lineData 
+   */
+  controlDataUpdate(lineData) {
+  }
+
   set isVisible(x) {
     if (this._isVisible !== x) {
       super.isVisible = x
@@ -573,6 +578,11 @@ export class ControlLineEditor extends ControlHandlerBase {
     }
   }
 
+  // Thanks javascript, this cost me 15 minutes to find out that if you don't pass trough the getter it's undefined $%^&%^*^&I
+  get isVisible() {
+    return super.isVisible;
+  }
+
   set isEnabled(x) {
     if (this._isEnabled !== x) {
       super.isEnabled = x
@@ -580,6 +590,10 @@ export class ControlLineEditor extends ControlHandlerBase {
         cd.isEnabled = x;
       }
     }
+  }
+  
+  get isEnabled() {
+    return super.isEnabled;
   }
 
   /**
