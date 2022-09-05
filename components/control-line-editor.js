@@ -659,6 +659,10 @@ export class ControlLineEditor extends ControlHandlerBase {
     this.colorIx = 0;
   }
 
+  dispose() {
+    this.clearAll();
+  }
+
   updateCanvas() {
     // F***** javascript if i use this.isVisible here it references the overriden setter which has no getter so undefined *()&^)*(*&
     if (!super.isVisible) {
