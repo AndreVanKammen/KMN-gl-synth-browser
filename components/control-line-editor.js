@@ -4,7 +4,7 @@ import getWebGLContext, { RenderingContextWithUtils } from "../../KMN-utils.js/w
 import { RenderControl } from "../../KMN-varstack-browser/components/webgl/render-control.js";
 // 0 1
 // 2
-// 2 1 3 4 
+// 2 1 3 4
 //   3   5
 const colors = [
   [0.9, 0.9, 0.9],
@@ -25,7 +25,7 @@ function getVertexShader() {
   return /*glsl*/`precision highp float;
     precision highp float;
     precision highp int;
-    
+
     uniform float pointSize;
     in vec2 vertexPosition;
 
@@ -53,7 +53,7 @@ function getVertexShader() {
       lineStart = texelFetch(pointDataTexture, ivec2(pointIx % 1024, pointIx / 1024), 0);
       pointIx++;
       lineEnd = texelFetch(pointDataTexture, ivec2(pointIx % 1024, pointIx / 1024), 0);
-      
+
       vec2 pixelSize = vec2(2.0) / scale / windowSize * (pointSize + 1.0) * dpr;
 
       int subPointIx = gl_VertexID % 6;
@@ -130,10 +130,10 @@ function getFragmentShader() {
 
     vec3 pointColor = vec3(0.19,0.19,0.9);
     float pointBorderWidth = 0.25 * dpr;
-    float lineWidth = 0.25 * dpr;
+    float lineWidth = 0.01 * dpr;
     float pointWidth = 0.5 * pointSize * dpr;
     if (lineStart.z > 0.0) {
-      pointWidth = pointSize * dpr;  
+      pointWidth = pointSize * dpr;
     }
 
     float hasPointBorder = 1.0 - smoothstep(pointBorderWidth, pointBorderWidth + 1.25, abs(pointDist - pointWidth));
@@ -151,7 +151,7 @@ function getFragmentShader() {
         hasPoint = max(hasPoint, newHasPoint);
         hasPointBorder = max(hasPointBorder - newHasPoint, 0.6 - smoothstep(0.5, 2.0, abs(newPointDist-8.0)));
 
-        float plus = min(1.0 - smoothstep(4.0* dpr, 4.5* dpr, newPointDist), 
+        float plus = min(1.0 - smoothstep(4.0* dpr, 4.5* dpr, newPointDist),
                          1.0 - smoothstep(0.5* dpr, 1.0* dpr, min(newPointDelta.x, newPointDelta.y) ) );
         hasPointBorder = max(hasPointBorder, plus);
 
@@ -166,7 +166,7 @@ function getFragmentShader() {
     color.rgb = clamp(hasPoint       * lineColor * 0.5 + //pointColor +
                       hasPointBorder * lineColor * 1.5 +
                       hasLine        * lineColor, 0.0, 1.0);
-                  
+
     color.a = max(max(hasPoint, hasLine), hasPointBorder);
     if (color.a > 0.001) {
       color.rgb = min(color.rgb / (color.a + 0.01), 1.0);
@@ -206,18 +206,21 @@ export class ControlLineData extends ControlHandlerBase {
     this.pointData = null;
   }
 
-  updateStateToOwner() {
+  updateStateToOwner(activeSelect) {
     if (this.selectedLineIx >= 0 || this.selectedPointIx > 0) {
-      this.owner.selectedControl = this;
+      this.owner._selectedControl = this;
+      if (activeSelect) {
+        this.owner.handleSelect();
+      }
     } else {
-      if (this.owner.selectedControl === this) {
-        this.owner.selectedControl = null;
+      if (this.owner._selectedControl === this) {
+        this.owner._selectedControl = null;
       }
     }
   }
 
   /**
-   * 
+   *
    * @param {{time:number,value:number}[]} points
    * @param {number} minValue
    * @param {number} maxValue
@@ -226,7 +229,7 @@ export class ControlLineData extends ControlHandlerBase {
    */
   setPoints(points, minValue = 0.0, maxValue = 1.0, defaultValue = 1.0, timeOffset = 0) {
     this.points = points;
-    
+
     this.minValue = minValue;
     this.maxValue = maxValue
     this.defaultValue = defaultValue;
@@ -275,11 +278,12 @@ export class ControlLineData extends ControlHandlerBase {
     const lineX = this.selectedLineOffset;
     let newTime = (pa.time * (1.0 - lineX)) + lineX * pb.time;
     let newValue = (pa.value * (1.0 - lineX)) + lineX * pb.value;
-    console.log('click', newTime, newValue);
+    console.log('createNewPoint', newTime, newValue);
     this.points.splice(this.selectedLineIx + 1, 0, { time: newTime, value: newValue });
     this.updatePointData();
     this.selectedPointIx = this.selectedLineIx + 1;
-    this.updateStateToOwner()
+    this.selectedLineIx = -1;
+    this.updateStateToOwner(true);
     this.owner.controlDataUpdate(this);
   }
 
@@ -288,10 +292,10 @@ export class ControlLineData extends ControlHandlerBase {
       // Done in mouse down now
       // this.createNewPoint(x,y);
       let newClickTime = performance.now();
-      if (this.lastClickTime && ((newClickTime - this.lastClickTime) < 400)) {
+      // if (this.lastClickTime && ((newClickTime - this.lastClickTime) < 400)) {
         this.createNewPoint(x, y);
         // this.updatePointData();
-      }
+      // }
       this.lastClickTime = newClickTime;
     } else if (this.selectedPointIx !== -1) {
       let newClickTime = performance.now();
@@ -314,12 +318,14 @@ export class ControlLineData extends ControlHandlerBase {
   handleDblClick(x, y) {
     return this.selectedLineIx !== -1 || this.selectedPointIx !== -1;
   }
-  
+
   handleDown(x, y) {
     this.updateSelect(x, y);
+    this.updateStateToOwner(true);
     if (this.selectedLineIx !== -1 && this.control.event.ctrlKey) {
       this.createNewPoint(x, y);
-      return true;
+      this.updateSelect(x, y);
+      // return true;
     }
     this.pointsChanged = false;
     if (this.selectedPointIx >= 0 || this.selectedLineIx !== -1) {
@@ -423,7 +429,7 @@ export class ControlLineData extends ControlHandlerBase {
         let newTime = this.mouseDownTime - dx * this.owner.duration;
         newTime = Math.min(Math.max(newTime, this.mouseDownMinTime), this.mouseDownMaxTime);
         this.updatePointTime(this.selectedPointIx, newTime);
-  
+
         let newValue = this.mouseDownValue - dy * this.valueRange;
         newValue = Math.min(Math.max(newValue, this.minValue), this.maxValue);
 
@@ -442,7 +448,7 @@ export class ControlLineData extends ControlHandlerBase {
         }
 
         this.updatePointValue(this.selectedPointIx, newValue);
-  
+
         this.updatePointData(true);
         this.pointData[this.selectedPointIx * 4 + 2] = 1.0;
       }
@@ -476,7 +482,7 @@ export class ControlLineData extends ControlHandlerBase {
     if (!this.points) {
       this.selectedLineIx = -1;
       this.selectedPointIx = -1;
-      this.updateStateToOwner()
+      this.updateStateToOwner(false);
       return;
     }
 
@@ -558,13 +564,20 @@ export class ControlLineEditor extends ControlHandlerBase {
     /** @type {Record<string,ControlLineData>}*/
     this.controlData = {};
     /** @type {ControlLineData} */
-    this.selectedControl = null;
+    this._selectedControl = null;
     this.opacity = 1.0;
   }
 
+  handleSelect() {
+  }
+
+  get selectedControl() {
+    return this.isSelected ? this._selectedControl : null;
+  }
+
   /**
-   * 
-   * @param {ControlLineData} lineData 
+   *
+   * @param {ControlLineData} lineData
    */
   controlDataUpdate(lineData) {
   }
@@ -591,7 +604,7 @@ export class ControlLineEditor extends ControlHandlerBase {
       }
     }
   }
-  
+
   get isEnabled() {
     return super.isEnabled;
   }
@@ -628,7 +641,7 @@ export class ControlLineEditor extends ControlHandlerBase {
   }
 
 /**
- * 
+ *
  * @param {string} dataName
  * @param {{time:number,value:number}[]} points
  * @param {number} duration
