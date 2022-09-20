@@ -177,6 +177,12 @@ function getFragmentShader() {
   `
 }
 
+/**
+ * @typedef {{time:number,value:number}} ControlLinePoint
+ */
+
+const vertexSize = 4;
+
 export class ControlLineData extends ControlHandlerBase {
   /**
    * @param {ControlLineEditor} owner
@@ -196,6 +202,18 @@ export class ControlLineData extends ControlHandlerBase {
     this.dataName = dataName;
     this.color = colors[this.owner.colorIx++ % colors.length];
     this.valueSnaps = [];
+
+    /** @type {ControlLinePoint}*/
+    this.startPoint = null;
+    /** @type {ControlLinePoint}*/
+    this.endPoint = null;
+    this.vertex1stPointOffset = 0 * vertexSize;
+    this.extraVertexPoints = 1;
+    this.selectedLineIx = -1;
+    this.selectedPointIx = -1;
+
+    this.pointsInvalidated = false;
+    this.pointDataInvalidated = false;
   }
 
   dispose() {
@@ -221,7 +239,7 @@ export class ControlLineData extends ControlHandlerBase {
 
   /**
    *
-   * @param {{time:number,value:number}[]} points
+   * @param {ControlLinePoint[]} points
    * @param {number} minValue
    * @param {number} maxValue
    * @param {number} defaultValue
@@ -241,14 +259,47 @@ export class ControlLineData extends ControlHandlerBase {
     this.valueRange = this.maxValue - this.minValue;
     this.valueSnapDist = this.valueRange * 0.03;
 
-    this.updatePointData();
+    this.pointsInvalidated = true;
   }
 
-  updatePointData(skipUpdate = false) {
+
+  /**
+   *
+   * @param {ControlLinePoint} startPoint
+   * @param {ControlLinePoint} endPoint
+   */
+  setRange(startPoint, endPoint) {
+    if (startPoint) {
+      this.vertex1stPointOffset = 1 * vertexSize;
+      this.extraVertexPoints = 2;
+    } else {
+      this.vertex1stPointOffset = 0 * vertexSize;
+      this.extraVertexPoints = 1;
+    }
+    this.startPoint = startPoint;
+    this.endPoint = endPoint;
+    if (this.points?.length > 0) {
+      this.startPoint.value = this.points[0].value;
+      let endIx = this.points.length - 1;
+      this.endPoint.value = this.points[endIx].value;;
+    }
+    this.pointsInvalidated = true;
+  }
+
+  updatePointData() {
     const gl = this.gl;
     // TODO size is multiple check for more then 1000 points
-    const data = this.pointData = new Float32Array(Math.ceil((this.points.length + 1) * 4.0 / 4096) * 4096);
+    const data = this.pointData = new Float32Array(Math.ceil((this.points.length + this.extraVertexPoints) * vertexSize / 4096) * 4096);
     let ofs = 0;
+
+    if (this.startPoint) {
+      let time = this.startPoint.time + this.timeOffset;
+      data[ofs++] = (time / this.owner.duration) * 2.0 - 1.0;
+      data[ofs++] = (this.startPoint.value - this.minValue) / this.valueRange * 2.0 - 1.0;
+      data[ofs++] = 0.0;
+      data[ofs++] = 0.0;
+    }
+
     for (const point of this.points) {
       let time = point.time + this.timeOffset;
       data[ofs++] = (time / this.owner.duration) * 2.0 - 1.0;
@@ -256,19 +307,44 @@ export class ControlLineData extends ControlHandlerBase {
       data[ofs++] = 0; // use for hover and stuff
       data[ofs++] = 0;
     }
-    // Copy last points data
-    data[ofs++] = data[ofs - 5];
-    data[ofs++] = data[ofs - 5];
-    data[ofs++] = data[ofs - 5];
-    data[ofs++] = data[ofs - 5];
-    if (!skipUpdate) {
-      this.pointInfo = gl.createOrUpdateFloat32TextureBuffer(data, this.pointInfo, 0, ofs);
-    }
-    if (this.owner.onUpdatePointData) {
-      if (!this.owner.updateDefered) {
-        this.owner.updateDefered = true;
-        defer(this.owner.handlePointDataUpdatedBound);
+
+    let endPoint = this.endPoint;
+    if (!endPoint) {
+      let pl = this.points.length;
+      if (pl > 0) {
+        endPoint = this.points[pl - 1];
+      } else {
+        endPoint = { time: this.owner.duration, value: this.defaultValue }
       }
+    }
+
+    let time = endPoint.time + this.timeOffset;
+    data[ofs++] = (time / this.owner.duration) * 2.0 - 1.0;
+    data[ofs++] = (endPoint.value - this.minValue) / this.valueRange * 2.0 - 1.0;
+    data[ofs++] = 0.0;
+    data[ofs++] = 0.0;
+
+    this.pointDataInvalidated = true;
+  }
+
+  checkUpdate() {
+    if (this.pointsInvalidated) {
+      this.updatePointData();
+
+      this.pointsInvalidated = false;
+      if (this.owner.onUpdatePointData) {
+        if (!this.owner.updateDefered) {
+          this.owner.updateDefered = true;
+          defer(this.owner.handlePointDataUpdatedBound);
+        }
+        this.pointsInvalidated = false;
+      }
+    }
+    if (this.pointDataInvalidated) {
+      if (this.pointData) {
+        this.pointInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.pointData, this.pointInfo);
+      }
+      this.pointDataInvalidated = false;
     }
   }
 
@@ -280,7 +356,7 @@ export class ControlLineData extends ControlHandlerBase {
     let newValue = (pa.value * (1.0 - lineX)) + lineX * pb.value;
     console.log('createNewPoint', newTime, newValue);
     this.points.splice(this.selectedLineIx + 1, 0, { time: newTime, value: newValue });
-    this.updatePointData();
+    this.pointsInvalidated = true;
     this.selectedPointIx = this.selectedLineIx + 1;
     this.selectedLineIx = -1;
     this.updateStateToOwner(true);
@@ -303,7 +379,7 @@ export class ControlLineData extends ControlHandlerBase {
       if (this.selectedPointIx !== 0 && this.selectedPointIx < this.points.length - 1) {
         if (this.lastClickTime && ((newClickTime - this.lastClickTime) < 400)) {
           this.points.splice(this.selectedPointIx, 1);
-          this.updatePointData();
+          this.pointsInvalidated = true;
           this.owner.controlDataUpdate(this);
         }
       }
@@ -339,7 +415,7 @@ export class ControlLineData extends ControlHandlerBase {
           this.mouseDownMinTime = this.points[this.selectedPointIx - 1].time;
           this.valueSnaps.push(this.points[this.selectedPointIx - 1].value)
         }
-        if (this.selectedPointIx < this.points.length - 1) {
+        if (this.selectedPointIx < this.points.length - this.extraVertexPoints) {
           this.mouseDownMaxTime = this.points[this.selectedPointIx + 1].time;
           this.valueSnaps.push(this.points[this.selectedPointIx + 1].value)
         }
@@ -347,16 +423,17 @@ export class ControlLineData extends ControlHandlerBase {
         this.mouseDownTime = this.points[this.selectedPointIx].time;
         this.mouseDownValue = this.points[this.selectedPointIx].value;
 
-        this.pointData[this.selectedPointIx * 4 + 2] = 1.0;
+        this.pointData[this.selectedPointIx * vertexSize + this.vertex1stPointOffset + 2] = 1.0;
       } else {
         if (!this.control.event.ctrlKey) {
           this.mouseDownValue = this.points[this.selectedLineIx].value;
           this.mouseDownValue2 = this.points[this.selectedLineIx + 1].value;
-          this.pointData[this.selectedLineIx * 4 + 2] = 1.0;
-          this.pointData[this.selectedLineIx * 4 + 6] = 1.0;
+          const ofs = this.selectedLineIx * vertexSize + this.vertex1stPointOffset;
+          this.pointData[ofs + 2] = 1.0;
+          this.pointData[ofs + 6] = 1.0;
         }
       }
-      this.pointInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.pointData, this.pointInfo);
+      this.pointDataInvalidated = true;
       return true;
     }
     return this.selectedPointIx !== -1 || this.selectedLineIx !== -1;
@@ -367,16 +444,27 @@ export class ControlLineData extends ControlHandlerBase {
     this.blur();
     this.selectedLineIx = -1;
     this.selectedPointIx = -1;
-    if (this.pointData) {
-      this.pointInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.pointData, this.pointInfo);
-    }
+    this.pointDataInvalidated = true;
   }
 
   updatePointValue(ix, value) {
     // console.log('value:',ix, this.points[ix].value, value);
     if (this.points[ix].value !== value) {
+      const vertexValue = (value - this.minValue) / this.valueRange * 2.0 - 1.0;
+      if (ix === 0 && this.startPoint) {
+        this.startPoint.value = value;
+        this.pointData[1] = vertexValue;
+      }
+      let endIx = this.points.length - 1;
+      if (ix === endIx && this.endPoint) {
+        this.endPoint.value = value;
+        const ofs = (endIx + this.extraVertexPoints-1) * vertexSize + this.vertex1stPointOffset;
+        this.pointData[ofs + 1] = vertexValue;
+      }
       this.points[ix].value = value;
       this.pointsChanged = true;
+      const ofs = ix * vertexSize + this.vertex1stPointOffset;
+      this.pointData[ofs + 1] = vertexValue;
     }
   }
 
@@ -385,6 +473,8 @@ export class ControlLineData extends ControlHandlerBase {
     if (this.points[ix].time !== time) {
       this.points[ix].time = time;
       this.pointsChanged = true;
+      const ofs = ix * vertexSize + this.vertex1stPointOffset;
+      this.pointData[ofs] = ((time + this.timeOffset) / this.owner.duration) * 2.0 - 1.0;
     }
   }
 
@@ -417,13 +507,14 @@ export class ControlLineData extends ControlHandlerBase {
         // newValue2 -= dyCorrection;
         this.updatePointValue(this.selectedLineIx, newValue1);
         this.updatePointValue(this.selectedLineIx + 1, newValue2);
-        this.updatePointData(true);
 
-        this.pointData[this.selectedLineIx * 4 + 2] = 1.0;
-        this.pointData[this.selectedLineIx * 4 + 3] = 2.0;
-        this.pointData[this.selectedLineIx * 4 + 6] = 1.0;
+        const ofs = this.selectedLineIx * vertexSize + this.vertex1stPointOffset;
+        this.pointData[ofs + 2] = 1.0;
+        this.pointData[ofs + 3] = 2.0;
+        this.pointData[ofs + 6] = 1.0;
+        this.pointDataInvalidated = true;
       } else {
-        if (this.selectedPointIx === 0 || this.selectedPointIx >= this.points.length - 1) {
+        if (this.selectedPointIx === 0 || this.selectedPointIx >= this.points.length) {
           dx = 0;
         }
         let newTime = this.mouseDownTime - dx * this.owner.duration;
@@ -449,13 +540,14 @@ export class ControlLineData extends ControlHandlerBase {
 
         this.updatePointValue(this.selectedPointIx, newValue);
 
-        this.updatePointData(true);
-        this.pointData[this.selectedPointIx * 4 + 2] = 1.0;
+        this.pointDataInvalidated = true;
+        const ofs = this.selectedPointIx * vertexSize + this.vertex1stPointOffset;
+        this.pointData[ofs + 2] = 1.0;
       }
     } else {
       this.updateSelect(x, y);
     }
-    this.pointInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.pointData, this.pointInfo);
+    this.pointDataInvalidated = true;
     let isSelected = this.selectedPointIx !== -1 || this.selectedLineIx !== -1;
     if (isSelected) {
       this.focus();
@@ -474,10 +566,11 @@ export class ControlLineData extends ControlHandlerBase {
   }
   handleKey(x, y, up) {
     this.updateSelect(x, y);
-    this.pointInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.pointData, this.pointInfo);
+    this.pointDataInvalidated = true;
     return false;
   }
   updateSelect(x, y) {
+    this.checkUpdate();
     const pointSize = 10.0;
     if (!this.points) {
       this.selectedLineIx = -1;
@@ -493,12 +586,13 @@ export class ControlLineData extends ControlHandlerBase {
       yFactor: this.owner.height * this.control.yScale / 2.0
     }
 
-    let ofs = 0;
+    let ofs = this.vertex1stPointOffset;
     let minDist = pointSize * 2.0;
     let selectedIx = -1;
     let lineIx = -1;
     let lastSdx = 0.0;
-    while (ofs < this.points.length * 4) {
+    const maxOfs = this.points.length * vertexSize + this.vertex1stPointOffset;
+    while (ofs < maxOfs) {
       const sdx = (this.pointData[ofs] - cd.xOffset) * cd.xFactor;
       const dx = Math.abs(sdx);
       if (dx < pointSize) {
@@ -506,29 +600,31 @@ export class ControlLineData extends ControlHandlerBase {
         let dist = Math.sqrt(dx * dx + dy * dy);
         if (dist < minDist) {
           minDist = dist;
-          selectedIx = ofs / 4;
+          selectedIx = (ofs - this.vertex1stPointOffset) / vertexSize;
         }
       }
       if (lastSdx < 0.0 && sdx > 0.0) {
-        lineIx = ofs / 4;
+        lineIx = (ofs - this.vertex1stPointOffset) / vertexSize;
       }
       this.pointData[ofs + 2] = 0.0;
       this.pointData[ofs + 3] = 0.0;
       lastSdx = sdx;
-      ofs += 4;
+      ofs += vertexSize;
     }
     this.selectedLineIx = -1;
     if (selectedIx !== -1) {
-      this.pointData[selectedIx * 4 + 2] = 1.0;
+      this.pointData[selectedIx * vertexSize + this.vertex1stPointOffset + 2] = 1.0;
       this.setCursor('move');
     } else {
       this.setCursor('');
       if (lineIx >= 1) {
         let lineStartIx = lineIx - 1;
-        let pax = this.pointData[lineStartIx * 4];
-        let pay = this.pointData[lineStartIx * 4 + 1];
-        let pbx = this.pointData[lineIx * 4];
-        let pby = this.pointData[lineIx * 4 + 1];
+        const ofsa = lineStartIx * vertexSize + this.vertex1stPointOffset;
+        let pax = this.pointData[ofsa];
+        let pay = this.pointData[ofsa + 1];
+        const ofsb = lineIx * vertexSize + this.vertex1stPointOffset;
+        let pbx = this.pointData[ofsb];
+        let pby = this.pointData[ofsb + 1];
         let lineX = (cd.xOffset - pax) / (pbx - pax);
         let yVal = (pay * (1.0 - lineX)) + lineX * pby;
         if (Math.abs(yVal - cd.yOffset) * cd.yFactor < pointSize) {
@@ -540,7 +636,7 @@ export class ControlLineData extends ControlHandlerBase {
             this.setCursor('ns-resize');
             lineX = 2.0;
           }
-          this.pointData[this.selectedLineIx * 4 + 3] = lineX;
+          this.pointData[this.selectedLineIx * vertexSize + this.vertex1stPointOffset + 3] = lineX;
         }
       }
     }
@@ -643,11 +739,12 @@ export class ControlLineEditor extends ControlHandlerBase {
 /**
  *
  * @param {string} dataName
- * @param {{time:number,value:number}[]} points
+ * @param {ControlLinePoint[]} points
  * @param {number} duration
  * @param {number} minValue
  * @param {number} defaultValue
  * @param {number} timeOffset
+ * @returns {ControlLineData}
  */
   setPoints(dataName, points, duration, minValue = 10000000.0, maxValue = -10000000.0, defaultValue = 1.0, timeOffset = 0.0) {
     this.duration = duration;
@@ -661,6 +758,7 @@ export class ControlLineEditor extends ControlHandlerBase {
       this.controlData[dataName] = data;
     }
     data.setPoints(points, minValue, maxValue, defaultValue, timeOffset);
+    return data;
   }
 
   clearAll() {
@@ -694,6 +792,7 @@ export class ControlLineEditor extends ControlHandlerBase {
 
         for (let key of Object.keys(this.controlData)) {
           let data = this.controlData[key];
+          data.checkUpdate();
           shader.u.lineColor?.set.apply(this, data.color);// (0.6,0.6,0.6);
           if (data._isFocused) {
             shader.u.pointSize?.set(7.0);
@@ -707,7 +806,7 @@ export class ControlLineEditor extends ControlHandlerBase {
             gl.activeTexture(gl.TEXTURE0);
           }
           shader.u.opacity?.set(this.opacity);
-          gl.drawArrays(gl.TRIANGLES, 0, (data.points.length) * 6.0);
+          gl.drawArrays(gl.TRIANGLES, 0, (data.points.length + data.extraVertexPoints - 1) * 6.0);
         }
       }
     }
