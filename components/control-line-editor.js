@@ -188,9 +188,10 @@ export class ControlLineData extends ControlHandlerBase {
    * @param {ControlLineEditor} owner
    * @param {*} gl
    * @param {PanZoomBase} control
-   * @param {string} [dataName]
+   * @param {string} dataName
+   * @param {number} colorIx
    */
-  constructor(owner, gl, control, dataName) {
+  constructor(owner, gl, control, dataName, colorIx) {
     super();
 
     this.owner = owner;
@@ -200,7 +201,7 @@ export class ControlLineData extends ControlHandlerBase {
     this.mouseDownOnPoint = null;
     this.onUpdatePointData = null;
     this.dataName = dataName;
-    this.color = colors[this.owner.colorIx++ % colors.length];
+    this.color = this.owner.colors[colorIx % this.owner.colors.length];
     this.valueSnaps = [];
 
     /** @type {ControlLinePoint}*/
@@ -652,11 +653,11 @@ export class ControlLineEditor extends ControlHandlerBase {
     this.width = 10;
     this.height = 10;
     this.mouseDownOnPoint = null;
+    this.colors = colors;
 
     this.onUpdatePointData = null;
     this.updateDefered = false;
     this.handlePointDataUpdatedBound = this.handlePointDataUpdated.bind(this);
-    this.colorIx = ~~0;
     /** @type {Record<string,ControlLineData>}*/
     this.controlData = {};
     /** @type {ControlLineData} */
@@ -739,6 +740,7 @@ export class ControlLineEditor extends ControlHandlerBase {
 /**
  *
  * @param {string} dataName
+ * @param {number} colorIx
  * @param {ControlLinePoint[]} points
  * @param {number} duration
  * @param {number} minValue
@@ -746,12 +748,12 @@ export class ControlLineEditor extends ControlHandlerBase {
  * @param {number} timeOffset
  * @returns {ControlLineData}
  */
-  setPoints(dataName, points, duration, minValue = 10000000.0, maxValue = -10000000.0, defaultValue = 1.0, timeOffset = 0.0) {
+  setPoints(dataName, colorIx, points, duration, minValue = 10000000.0, maxValue = -10000000.0, defaultValue = 1.0, timeOffset = 0.0) {
     this.duration = duration;
     /** @type {ControlLineData} */
     let data = this.controlData[dataName];
     if (!data) {
-      data = new ControlLineData(this, this.gl, this.control, dataName);
+      data = new ControlLineData(this, this.gl, this.control, dataName, colorIx);
       data.isVisible = this._isVisible;
       data.isEnabled = this._isEnabled;
       this.control.addHandler(data);
