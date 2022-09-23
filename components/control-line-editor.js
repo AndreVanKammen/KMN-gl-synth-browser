@@ -54,7 +54,7 @@ function getVertexShader() {
       pointIx++;
       lineEnd = texelFetch(pointDataTexture, ivec2(pointIx % 1024, pointIx / 1024), 0);
 
-      vec2 pixelSize = vec2(2.0) / scale / windowSize * (pointSize + 2.0) * dpr;
+      vec2 pixelSize = vec2(2.0) / scale / windowSize * (pointSize + 1.0) * dpr;
 
       int subPointIx = gl_VertexID % 6;
       vec2 pos;
