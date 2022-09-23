@@ -54,7 +54,7 @@ function getVertexShader() {
       pointIx++;
       lineEnd = texelFetch(pointDataTexture, ivec2(pointIx % 1024, pointIx / 1024), 0);
 
-      vec2 pixelSize = vec2(2.0) / scale / windowSize * (pointSize + 1.0) * dpr;
+      vec2 pixelSize = vec2(2.0) / scale / windowSize * (pointSize + 2.0) * dpr;
 
       int subPointIx = gl_VertexID % 6;
       vec2 pos;
@@ -130,7 +130,7 @@ function getFragmentShader() {
 
     vec3 pointColor = vec3(0.19,0.19,0.9);
     float pointBorderWidth = 0.25 * dpr;
-    float lineWidth = 0.01 * dpr;
+    float lineWidth = 0.6*dpr;
     float pointWidth = 0.5 * pointSize * dpr;
     if (lineStart.z > 0.0) {
       pointWidth = pointSize * dpr;
@@ -140,7 +140,7 @@ function getFragmentShader() {
     float hasPoint = 1.0 - smoothstep(pointWidth, pointWidth + 1.5, pointDist);
 
     if (lineStart.w > 0.0) {
-      lineWidth = 0.75 * dpr;
+      lineWidth = 0.9 * dpr;
       if (lineStart.w < 1.0) {
         vec2 newPointPos = mix(lineStartScreen, lineEndScreen, lineStart.w);
         vec2 newPointDelta = abs(textureCoordScreen - newPointPos);
@@ -158,7 +158,8 @@ function getFragmentShader() {
       }
     }
 
-    float hasLine = 1.0 - pow(smoothstep(lineWidth, lineWidth + 1.5*dpr, lineDist),.5);
+
+    float hasLine = 1.0 - pow(smoothstep(lineWidth-dpr,lineWidth+dpr,lineDist),1.4);
 
     hasLine = max(hasLine - hasPoint, 0.0);
     hasPoint = max(hasPoint - hasPointBorder, 0.0);
@@ -167,11 +168,12 @@ function getFragmentShader() {
                       hasPointBorder * lineColor * 1.5 +
                       hasLine        * lineColor, 0.0, 1.0);
 
-    color.a = max(max(hasPoint, hasLine), hasPointBorder);
-    if (color.a > 0.001) {
-      color.rgb = min(color.rgb / (color.a + 0.01), 1.0);
-    }
+    color.a = pow(max(max(hasPoint, hasLine), hasPointBorder),0.5);
+    // if (color.a > 0.001) {
+    //   color.rgb = min(color.rgb / (color.a + 0.01), 1.0);
+    // }
     color.a *= opacity;
+    // color.a = 1.0;
     fragColor = pow(color.rgba,vec4(1.0/2.2));
   }
   `
