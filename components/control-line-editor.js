@@ -203,7 +203,7 @@ export class ControlLineData extends ControlHandlerBase {
     this.mouseDownOnPoint = null;
     this.onUpdatePointData = null;
     this.dataName = dataName;
-    this.color = this.owner.colors[colorIx % this.owner.colors.length];
+    this.colorIx = colorIx;
     this.valueSnaps = [];
 
     /** @type {ControlLinePoint}*/
@@ -797,7 +797,7 @@ export class ControlLineEditor extends ControlHandlerBase {
         for (let key of Object.keys(this.controlData)) {
           let data = this.controlData[key];
           data.checkUpdate();
-          shader.u.lineColor?.set.apply(this, data.color);// (0.6,0.6,0.6);
+          shader.u.lineColor?.set.apply(this, this.colors[data.colorIx % this.colors.length]);
           if (data._isFocused) {
             shader.u.pointSize?.set(7.0);
           } else {
