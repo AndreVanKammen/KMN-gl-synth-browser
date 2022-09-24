@@ -22,12 +22,12 @@ vec4 getSample4Hist(float lineX,int historyCount) {
   currentLine = (currentLine + int(value.z)) % bufferHeight;
   if (int(value.x) == 0) {
     return texelFetch(sampleTextures0,
-        ivec3(round(lineX * float(bufferWidth)), 
+        ivec3(round(lineX * float(bufferWidth)),
               currentLine,
               currentBuffer), 0);
   } else {
     return texelFetch(sampleTextures1,
-        ivec3(round(lineX * float(bufferWidth)), 
+        ivec3(round(lineX * float(bufferWidth)),
               currentLine,
               currentBuffer), 0);
   }
@@ -38,12 +38,12 @@ vec4 getSample4(float lineX) {
   int currentLine = int(value.y) % bufferHeight;
   if (int(value.x) == 0) {
     return texelFetch(sampleTextures0,
-        ivec3(round(lineX * float(bufferWidth)), 
+        ivec3(round(lineX * float(bufferWidth)),
               currentLine,
               currentBuffer), 0);
   } else {
     return texelFetch(sampleTextures1,
-        ivec3(round(lineX * float(bufferWidth)), 
+        ivec3(round(lineX * float(bufferWidth)),
               currentLine,
               currentBuffer), 0);
   }
@@ -58,12 +58,12 @@ float getMax() {
     bufferIx += bufferHeight * bufferCount;
   }
 
-  return 
+  return
     max(  texelFetch(rms_avg_eng_max_left,
-                     ivec2(bufferIx % bufferWidth, 
+                     ivec2(bufferIx % bufferWidth,
                            bufferIx / bufferHeight), 0).w, // TODO: Check if bufferHeight is right here?
           texelFetch(rms_avg_eng_max_right,
-                     ivec2(bufferIx % bufferWidth, 
+                     ivec2(bufferIx % bufferWidth,
                            bufferIx / bufferHeight), 0).w);
 }
 mat2x4 getEnergy() {
@@ -73,10 +73,10 @@ mat2x4 getEnergy() {
   }
 
   vec4 raemL = texelFetch(rms_avg_eng_max_left,
-                          ivec2(bufferIx % bufferWidth, 
+                          ivec2(bufferIx % bufferWidth,
                           bufferIx / bufferHeight), 0);
   vec4 raemR = texelFetch(rms_avg_eng_max_right,
-                          ivec2(bufferIx % bufferWidth, 
+                          ivec2(bufferIx % bufferWidth,
                           bufferIx / bufferHeight), 0);
   raemL.x = sqrt(raemL.x);
   raemR.x = sqrt(raemR.x);
@@ -93,7 +93,7 @@ uniform sampler2DArray outputTexture;
 
 vec2 getSample(float lineX) {
   return texelFetch(outputTexture,
-      ivec3(round(lineX * float(bufferWidth)), 
+      ivec3(round(lineX * float(bufferWidth)),
             0,
             0), 0).rg * 0.5;
 }
@@ -108,8 +108,8 @@ mat2x4 getEnergy() {
 `;
 export class MixerScope {
   _controller = RenderControl.geInstance();
-  
-  /** 
+
+  /**
    * @param {HTMLElement} element
    */
   constructor(element) {
@@ -118,17 +118,18 @@ export class MixerScope {
   }
 
   /**
-   * 
+   *
    * @param {WebGLSynth} synth
-   * @param {SynthMixer} mixer 
+   * @param {SynthMixer} mixer
    */
-  setSynthMixer(synth, mixer) {
+  setSynthMixer(synth, mixer, scopeShader = 'scope') {
     this.synth = synth;
     this.mixer = mixer;
     this.isOutput = mixer == null;
+    this.scopeShader = scopeShader;
 
     const clipHash = getElementHash(this._clipElement) + ~~mixer?.mixerHash * 65535;
-    this._componentInfo = this._controller.getComponentInfo(clipHash, 'scope', this.updateComponentInfo.bind(this));
+    this._componentInfo = this._controller.getComponentInfo(clipHash, scopeShader, this.updateComponentInfo.bind(this));
     this._componentInfo.getShader = this.handleGetShader.bind(this);
     this._scopeInfo = this._componentInfo.getFreeIndex(this.updateScopeInfo.bind(this))
   }
@@ -137,7 +138,7 @@ export class MixerScope {
     return this.synth.getDefaultDefines() +
       (this.isOutput
         ? scopeShaderHeaderOutput
-        : scopeShaderHeader) + ComponentShaders['scope'] + baseComponentShaderFooter;
+        : scopeShaderHeader) + ComponentShaders[this.scopeShader] + baseComponentShaderFooter;
   }
 
   /** @param {ComponentInfo} info */
@@ -154,8 +155,8 @@ export class MixerScope {
   }
 
   /**
-   * @param {import("../../../KMN-utils.js/webglutils.js").RenderingContextWithUtils} gl 
-   * @param {import("../../../KMN-utils.js/webglutils.js").WebGLProgramExt} shader 
+   * @param {import("../../../KMN-utils.js/webglutils.js").RenderingContextWithUtils} gl
+   * @param {import("../../../KMN-utils.js/webglutils.js").WebGLProgramExt} shader
    */
   handleShaderInit = (gl,shader) => {
     const webGLSynth = this.synth;
@@ -200,12 +201,12 @@ export class MixerScope {
       info.rect.height = box.height;
       info.rect.x      = box.x;
       info.rect.y      = box.y;
-  
+
       info.size.centerX = box.width / 2;
       info.size.centerY = box.height / 2;
       info.size.width   = box.width;
       info.size.height  = box.height
-  
+
       if (this.isOutput){
         info.value[2] = webGLSynth.maxLevel;
       } else {
@@ -234,9 +235,9 @@ export class MixerScope {
 // TODO: Change to make use of MixerScope
 export class Scope extends BaseBinding {
   _controller = RenderControl.geInstance();
-  
-  /** 
-   * @param {StringVar} instrumentName 
+
+  /**
+   * @param {StringVar} instrumentName
    * @param {HTMLElement} element
    * @param {string} [type]
    */
@@ -257,9 +258,9 @@ export class Scope extends BaseBinding {
   }
 
   handleGetShader() {
-    return this.synthController.webGLSynth.getDefaultDefines() + 
+    return this.synthController.webGLSynth.getDefaultDefines() +
          (this.isOutput
-         ? scopeShaderHeaderOutput 
+         ? scopeShaderHeaderOutput
          : scopeShaderHeader) + ComponentShaders['scope'] + baseComponentShaderFooter;
   }
 
@@ -278,8 +279,8 @@ export class Scope extends BaseBinding {
   }
 
   /**
-   * @param {import("../../../KMN-utils.js/webglutils.js").RenderingContextWithUtils} gl 
-   * @param {import("../../../KMN-utils.js/webglutils.js").WebGLProgramExt} shader 
+   * @param {import("../../../KMN-utils.js/webglutils.js").RenderingContextWithUtils} gl
+   * @param {import("../../../KMN-utils.js/webglutils.js").WebGLProgramExt} shader
    */
   handleShaderInit = (gl,shader) => {
     const webGLSynth = this.synthController?.webGLSynth
@@ -326,12 +327,12 @@ export class Scope extends BaseBinding {
       info.rect.height = box.height;
       info.rect.x      = box.x;
       info.rect.y      = box.y;
-  
+
       info.size.centerX = box.width / 2;
       info.size.centerY = box.height / 2;
       info.size.width   = box.width;
       info.size.height  = box.height
-  
+
       if (this.isOutput){
         info.value[2] = webGLSynth.maxLevel;
       } else {
