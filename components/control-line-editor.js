@@ -130,7 +130,7 @@ function getFragmentShader() {
 
     vec3 pointColor = vec3(0.19,0.19,0.9);
     float pointBorderWidth = 0.25 * dpr;
-    float lineWidth = 0.6*dpr;
+    float lineWidth = 0.6;
     float pointWidth = 0.5 * pointSize * dpr;
     if (lineStart.z > 0.0) {
       pointWidth = pointSize * dpr;
@@ -140,7 +140,7 @@ function getFragmentShader() {
     float hasPoint = 1.0 - smoothstep(pointWidth, pointWidth + 1.5, pointDist);
 
     if (lineStart.w > 0.0) {
-      lineWidth = 0.9 * dpr;
+      lineWidth = 0.9;
       if (lineStart.w < 1.0) {
         vec2 newPointPos = mix(lineStartScreen, lineEndScreen, lineStart.w);
         vec2 newPointDelta = abs(textureCoordScreen - newPointPos);
@@ -159,7 +159,7 @@ function getFragmentShader() {
     }
 
 
-    float hasLine = 1.0 - pow(smoothstep(lineWidth-dpr,lineWidth+dpr,lineDist),1.4);
+    float hasLine = 1.0 - pow(smoothstep(lineWidth-1.0,lineWidth+1.0,lineDist),1.4);
 
     hasLine = max(hasLine - hasPoint, 0.0);
     hasPoint = max(hasPoint - hasPointBorder, 0.0);
