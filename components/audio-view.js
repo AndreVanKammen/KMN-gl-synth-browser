@@ -1,4 +1,3 @@
-import WebGLSynth from "../../KMN-gl-synth.js/webgl-synth.js";
 import PanZoomControl, { ControlHandlerBase } from "../../KMN-utils-browser/pan-zoom-control.js";
 import getWebGLContext from "../../KMN-utils.js/webglutils.js";
 import { RenderControl } from "../../KMN-varstack-browser/components/webgl/render-control.js";
@@ -59,7 +58,7 @@ function getFragmentShader(options) {
   uniform vec4 maxColor;
   uniform vec4 rmsColor;
   uniform vec4 engColor;
-  
+
   uniform vec3 preScale;
   uniform vec3 quadraticCurve;
   uniform vec3 linearDbMix;
@@ -70,7 +69,7 @@ function getFragmentShader(options) {
 
   uniform sampler2D analyzeTexturesLeft;
   uniform sampler2D analyzeTexturesRight;
-  
+
   const float log10 = 1.0 / log(10.0);
 
   vec3 getDataIX0(int ix, int LODLevel) {
@@ -95,7 +94,7 @@ function getFragmentShader(options) {
 
     vec3 low = getDataIX0(int(floor(ix)), LODLevel);
     vec3 high = getDataIX0(int(ceil(ix)), LODLevel);
-     
+
     return mix(low,high,fract(ix * float(!showMaxOnly)));
   }
 
@@ -109,7 +108,7 @@ function getFragmentShader(options) {
   vec3 mixDataIX(float ix) {
     int startIx = int(floor(ix));
     int stopIx = int(ceil(ix));
-    
+
     vec3 result = getDataIX(ix, clamp(log2(0.5+fragmentsPerPixel*(1.0+LODLevel)),0.01,float(${levelsOfDetail})));
     result.z *= 4.0;
     if (!showMaxOnly) {
@@ -129,7 +128,7 @@ function getFragmentShader(options) {
     float delta = (textureCoord.x * durationInFragments);
 
     float readOffset = float(offset) + delta;
-    
+
     float fragmentsPerPixel = durationInFragments / (scale.x * float(windowSize.x));
     vec3 data1 = mixDataIX(readOffset);
     vec2 px = vec2(1.0) / vec2(windowSize) / scale;
@@ -137,7 +136,7 @@ function getFragmentShader(options) {
     vec3 dist = clamp(data1,0.0,1.0);
     dist = smoothstep(
       dist - vec3(px.y),
-      dist + vec3(px.y), 
+      dist + vec3(px.y),
       abs(vec3(1.0 - 2.0 * textureCoord.y)));
     vec3 d = 1.0 - dist;
 
@@ -213,7 +212,7 @@ export class AudioView extends ControlHandlerBase {
     this.parentElement = parentElement;
 
     this.canvas = this.options.canvas || this.parentElement.$el({ tag: 'canvas', cls: 'analyzerCanvas' });
-    
+
     /** @type {PanZoomControl} */
     this.control = this.options.control || new PanZoomControl(this.parentElement, {
       minYScale: 1.0,
@@ -233,7 +232,6 @@ export class AudioView extends ControlHandlerBase {
       1, 1,
       1, -1];
     this.vertexBuffer = gl.updateOrCreateFloatArray(0, basic2triangles);
-    // gl.checkUpdateShader('audio-view', getVertexShader(), this.webglSynth.getDefaultDefines() + getFragmentShader());
 
     if (this.options.canvasRoutine) {
       this.canvasRoutine = this.options.canvasRoutine;
@@ -281,8 +279,8 @@ export class AudioView extends ControlHandlerBase {
   }
 
   /**
-   * 
-   * @param {Float32Array} viewData 
+   *
+   * @param {Float32Array} viewData
    * @param {number} durationInFragments
    */
   setViewData(viewData, durationInFragments) {
@@ -313,12 +311,8 @@ export class AudioView extends ControlHandlerBase {
     24..25 //       4.5              13
 
 */
-    this.viewTexture0 = gl.createOrUpdateFloat32TextureBuffer(viewBuf0, 
-                             // { bufferWidth:this.webglSynth.bufferWidth });
-                             this.viewTexture0);
-    this.viewTexture1 = gl.createOrUpdateFloat32TextureBuffer(viewBuf1, 
-                             // { bufferWidth:this.webglSynth.bufferWidth });
-                             this.viewTexture1);
+    this.viewTexture0 = gl.createOrUpdateFloat32TextureBuffer(viewBuf0, this.viewTexture0);
+    this.viewTexture1 = gl.createOrUpdateFloat32TextureBuffer(viewBuf1, this.viewTexture1);
     this.recordAnalyzeBuffer = {
       leftTex: this.viewTexture0.texture,
       rightTex: this.viewTexture1.texture
@@ -337,14 +331,14 @@ export class AudioView extends ControlHandlerBase {
     yScaleSmooth = this.control.yScaleSmooth,
     xOffsetSmooth = this.control.xOffsetSmooth,
     yOffsetSmooth = this.control.yOffsetSmooth) {
-    
+
     const gl = this.gl;
     const shader = this.shader = gl.checkUpdateShader2(this.shaderName, this.getVertexShaderBound, this.getFragmentShaderBound);
 
     if (gl && this.parentElement && this.viewTexture0.texture && this.recordAnalyzeBuffer) {
       if (gl.updateShaderAndSize(this, shader, this.parentElement, this.clipElement)) {
-    
-        shader.u.offset?.set(this.dataOffset); // this.webglSynth.processCount);s
+
+        shader.u.offset?.set(this.dataOffset);
         shader.u.durationInFragments?.set(this.durationInFragments);
         shader.u.scale?.set(xScaleSmooth, yScaleSmooth);
         shader.u.position?.set(xOffsetSmooth, yOffsetSmooth);
@@ -365,7 +359,7 @@ export class AudioView extends ControlHandlerBase {
         shader.u.maxColor.set.apply(null, this.maxColor);
         shader.u.rmsColor.set.apply(null, this.rmsColor);
         shader.u.engColor.set.apply(null, this.engColor);
-      
+
         shader.u.playPos.set(this.onGetPlayPos())
 
         gl.activeTexture(gl.TEXTURE10);
