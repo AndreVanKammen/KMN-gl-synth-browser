@@ -172,7 +172,7 @@ function getFragmentShader() {
     // if (color.a > 0.001) {
     //   color.rgb = min(color.rgb / (color.a + 0.01), 1.0);
     // }
-    color.a *= opacity;
+    // color.a *= opacity;
     // color.a = 1.0;
     fragColor = pow(color.rgba,vec4(1.0/2.2));
   }
@@ -217,6 +217,7 @@ export class ControlLineData extends ControlHandlerBase {
 
     this.pointsInvalidated = false;
     this.pointDataInvalidated = false;
+    this.rc = RenderControl.geInstance();
   }
 
   dispose() {
@@ -665,6 +666,7 @@ export class ControlLineEditor extends ControlHandlerBase {
     /** @type {ControlLineData} */
     this._selectedControl = null;
     this.opacity = 1.0;
+    this.rc = RenderControl.geInstance();
   }
 
   handleSelect() {
@@ -786,10 +788,10 @@ export class ControlLineEditor extends ControlHandlerBase {
 
     let gl = this.gl;
     // let shader = gl.checkUpdateShader('control-line', getVertexShader(), getFragmentShader());
-    let shader = gl.checkUpdateShader2('control-line', getVertexShader, getFragmentShader);
+    let shader = this.rc.checkUpdateShader2('control-line', getVertexShader, getFragmentShader);
 
     if (gl && shader && this.parentElement) {
-      if (gl.updateShaderAndSize(this, shader, this.parentElement)) {
+      if (this.rc.updateShaderAndSize(this, shader, this.parentElement)) {
         shader.u.scale?.set(this.control.xScaleSmooth, this.control.yScaleSmooth);
         shader.u.position?.set(this.control.xOffsetSmooth, this.control.yOffsetSmooth);
         shader.u.duration?.set(this.duration);

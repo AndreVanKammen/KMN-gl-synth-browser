@@ -1,5 +1,5 @@
 import PanZoomControl, { ControlHandlerBase } from "../../KMN-utils-browser/pan-zoom-control.js";
-import getWebGLContext, { getVertexIDDiabled } from "../../KMN-utils.js/webglutils.js";
+import getWebGLContext from "../../KMN-utils.js/webglutils.js";
 import { RenderControl } from "../../KMN-varstack-browser/components/webgl/render-control.js";
 
 function getVertexShader(options) {
@@ -31,7 +31,7 @@ function getVertexShader(options) {
       // vec4 lineEnd = texelFetch(pointDataTexture, ivec2(pointIx % 1024, pointIx / 1024), 0);
 
       color = lineStart.yzw;
-      
+
       int subPointIx = vId % 2;
 
       vec2 pos;
@@ -82,7 +82,7 @@ function getFragmentShader() {
 export class WavLineView extends ControlHandlerBase {
   constructor(options) {
     super();
-    
+
     this.options = options;
     this.updateCanvasBound = this.updateCanvas.bind(this);
     this.width = 10;
@@ -96,6 +96,7 @@ export class WavLineView extends ControlHandlerBase {
     this.track = null;
     this.durationTreshhold = 3.0;
     this.onGetAudioTrack = (sender) => this.track;
+    this.rc = RenderControl.geInstance();
   }
 
   /**
@@ -123,9 +124,9 @@ export class WavLineView extends ControlHandlerBase {
       this.canvasRoutine = RenderControl.geInstance().registerCanvasUpdate('wav-line', this.updateCanvasBound, this.parentElement);
     }
 
-    this.vertexIDDisabled = getVertexIDDiabled();
+    this.vertexIDDisabled = this.rc.getVertexIDDiabled();
     if (this.vertexIDDisabled) {
-      this.vertexBuffer = this.gl.getVertex_IDWorkaroundBuffer();
+      this.vertexBuffer = this.rc.getVertex_IDWorkaroundBuffer();
     }
   }
 
@@ -147,7 +148,7 @@ export class WavLineView extends ControlHandlerBase {
       }
       this.duration = this.leftSamples.length / this.sampleRate;
     }
-    
+
     this.duration = this.leftSamples.length / this.sampleRate;
     let durationOnScreen = (this.duration / this.control.xScaleSmooth);
     let screenStartTime = this.control.xOffsetSmooth * this.duration;
@@ -173,7 +174,7 @@ export class WavLineView extends ControlHandlerBase {
     let startSample = ~~Math.round((screenStartTime + 0.5 * durationOnScreen) * this.sampleRate) - sampleCount / 2;
     this.startTime = startSample / this.sampleRate;
     this.endTime = (startSample + sampleCount) / this.sampleRate;
-    
+
     // if (startSample < 0) {
     //   sampleCount = Math.max(0, sampleCount + startSample);
     //   startSample = 0;
@@ -208,12 +209,12 @@ export class WavLineView extends ControlHandlerBase {
 
     let gl = this.gl;
 
-    let shader = gl.checkUpdateShader2('wav-line', getVertexShader, getFragmentShader);
-  
+    let shader = this.rc.checkUpdateShader2('wav-line', getVertexShader, getFragmentShader);
+
     if (gl && shader && this.parentElement) {
       let durationOnScreen = this.duration / this.control.xScale;
       if (durationOnScreen <= this.durationTreshhold && this.udatePoints() && this.pointInfo) {
-        if (gl.updateShaderAndSize(this, shader, this.parentElement)) {
+        if (this.rc.updateShaderAndSize(this, shader, this.parentElement)) {
           if (shader.u.pointDataTexture) {
             gl.activeTexture(gl.TEXTURE2);
             gl.bindTexture(gl.TEXTURE_2D, this.pointInfo.texture);

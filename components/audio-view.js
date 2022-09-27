@@ -186,6 +186,7 @@ export class AudioView extends ControlHandlerBase {
     this.shaderName = 'audio-view';
     this.clipElement = undefined;
     this.onGetPlayPos = () => -1;
+    this.rc = RenderControl.geInstance();
   }
 
   get rekordBoxColors() {
@@ -333,10 +334,10 @@ export class AudioView extends ControlHandlerBase {
     yOffsetSmooth = this.control.yOffsetSmooth) {
 
     const gl = this.gl;
-    const shader = this.shader = gl.checkUpdateShader2(this.shaderName, this.getVertexShaderBound, this.getFragmentShaderBound);
+    const shader = this.shader = this.rc.checkUpdateShader2(this.shaderName, this.getVertexShaderBound, this.getFragmentShaderBound);
 
     if (gl && this.parentElement && this.viewTexture0.texture && this.recordAnalyzeBuffer) {
-      if (gl.updateShaderAndSize(this, shader, this.parentElement, this.clipElement)) {
+      if (this.rc.updateShaderAndSize(this, shader, this.parentElement, this.clipElement)) {
 
         shader.u.offset?.set(this.dataOffset);
         shader.u.durationInFragments?.set(this.durationInFragments);

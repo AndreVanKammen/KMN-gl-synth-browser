@@ -3,7 +3,7 @@ import getWebGLContext from "../../KMN-utils.js/webglutils.js";
 import { RenderControl } from "../../KMN-varstack-browser/components/webgl/render-control.js";
 // 0 1
 // 2
-// 2 1 3 4 
+// 2 1 3 4
 //   3   5
 
 export class TimeLineBase extends ControlHandlerBase {
@@ -21,6 +21,7 @@ export class TimeLineBase extends ControlHandlerBase {
     this.lineDataLength = 0;
     this.lineData = undefined;
     this.perfStart = performance.now();
+    this.rc = RenderControl.geInstance();
   }
 
   /**
@@ -41,7 +42,7 @@ export class TimeLineBase extends ControlHandlerBase {
     });
 
     this.control.addHandler(this);
-    this.vertexBuffer = gl.getVertex_IDWorkaroundBuffer();
+    this.vertexBuffer = this.rc.getVertex_IDWorkaroundBuffer();
 
     // this.shader = gl.checkUpdateShader(this, getVertexShader(), getFragmentShader());
 
@@ -80,7 +81,7 @@ export class TimeLineBase extends ControlHandlerBase {
     }
     return true;
   }
-  
+
   handleDown(x, y) {
     this.updateSelect(x, y);
     if (this.selectedPointIx >= 0) {
@@ -101,7 +102,7 @@ export class TimeLineBase extends ControlHandlerBase {
       this.lineInfo = this.gl.createOrUpdateFloat32TextureBuffer(this.lineData, this.lineInfo);
     }
   }
-  
+
   handleMove(x, y) {
     if (this.mouseDownOnPoint) {
       let dx = this.mouseDownOnPoint.x - x;
@@ -110,7 +111,7 @@ export class TimeLineBase extends ControlHandlerBase {
       let newTime = this.mouseDownLineTime - dx * this.duration;
       newTime = Math.min(Math.max(newTime, 0.0), this.duration);
       this.lineData[this.selectedPointIx * 4] = newTime;
-      
+
       // this.lineData[this.selectedPointIx * 4 + 3] = 100.0;
     } else {
       this.updateSelect(x, y);
@@ -166,7 +167,7 @@ export class TimeLineBase extends ControlHandlerBase {
     }
 
     this.mouseOverLine(this.selectedPointIx, selectedIx);
-          
+
     this.selectedPointIx = selectedIx;
   }
 
@@ -174,25 +175,25 @@ export class TimeLineBase extends ControlHandlerBase {
     if (!this.isVisible) {
       return
     }
-    
+
     let gl = this.gl;
     // this.shader = gl.checkUpdateShader(this, getVertexShader(), getFragmentShader());
     let shader = this.getShader();
 
     if (gl && shader && this.parentElement && this.lineDataLength > 0) {
-      if (gl.updateShaderAndSize(this, shader, this.parentElement)) {
+      if (this.rc.updateShaderAndSize(this, shader, this.parentElement)) {
         if (shader.u.pointDataTexture) {
           gl.activeTexture(gl.TEXTURE3);
           gl.bindTexture(gl.TEXTURE_2D, this.lineInfo.texture);
           gl.uniform1i(shader.u.pointDataTexture, 3);
           gl.activeTexture(gl.TEXTURE0);
         }
-  
+
         // TODO: standardize this for shaders
         shader.u.time?.set((performance.now() - this.perfStart) / 1000.0);
         shader.u.isSelected?.set(this.isSelected);
         shader.u.isFocused?.set(this.isFocused);
-        
+
         shader.u.scale?.set(this.control.xScaleSmooth, this.control.yScaleSmooth);
         shader.u.position?.set(this.control.xOffsetSmooth, this.control.yOffsetSmooth);
 

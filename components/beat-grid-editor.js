@@ -18,7 +18,7 @@ function getVertexShader() {
     flat out vec4 lineInfo;
 
     flat out float lineXScreen;
-  
+
     out vec2 textureCoord;
     out vec2 textureCoordScreen;
 
@@ -51,7 +51,7 @@ function getVertexShader() {
       if (lineInfo.z>0.0) {
         pixelSize.x *= 3.0;
       }
-          
+
       int subPointIx = vId % 6;
       vec2 pos;
       if (subPointIx == 1 || subPointIx >= 4) {
@@ -119,7 +119,7 @@ function getFragmentShader() {
     float centerPoint = windowSize.y * ((0.5 - position.y) * scale.y);
     float halfHeight = windowSize.y * scale.y * 0.5;
     float edgeDist = halfHeight * 0.9 - abs(centerPoint-textureCoordScreen.y);
-    
+
     float lineWidth = 0.75 * dpr;
 
     float durationOnScreen = duration / scale.x;
@@ -174,7 +174,7 @@ export class BeatGridEditor extends TimeLineBase {
   updateGrid(lines, duration) {
     this.lines = lines;
     this.duration = duration;
-    
+
     this.updateLines();
   }
 
@@ -210,6 +210,6 @@ export class BeatGridEditor extends TimeLineBase {
   }
 
   getShader() {
-    return this.gl.checkUpdateShader2('beat-grid-lines', getVertexShader, getFragmentShader);
+    return this.rc.checkUpdateShader2('beat-grid-lines', getVertexShader, getFragmentShader);
   }
 }
