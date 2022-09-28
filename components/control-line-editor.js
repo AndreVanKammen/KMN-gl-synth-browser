@@ -21,7 +21,7 @@ const colors = [
   [0.5,   0, 1.0]
 ];
 
-function getVertexShader() {
+function getVertexShader(options) {
   return /*glsl*/`precision highp float;
     precision highp float;
     precision highp int;
@@ -38,11 +38,10 @@ function getVertexShader() {
     uniform float dpr;
     uniform float duration;
 
-    flat out vec4 lineStart;
-    flat out vec4 lineEnd;
-
-    flat out vec2 lineStartScreen;
-    flat out vec2 lineEndScreen;
+    ${options.flat}out vec4 lineStart;
+    ${options.flat}out vec4 lineEnd;
+    ${options.flat}out vec2 lineStartScreen;
+    ${options.flat}out vec2 lineEndScreen;
 
     out vec2 textureCoord;
     out vec2 textureCoordScreen;
@@ -87,7 +86,7 @@ function getVertexShader() {
 }
 
   // The shader that calculates the pixel values for the filled triangles
-function getFragmentShader() {
+function getFragmentShader(options) {
   return /*glsl*/`precision highp float;
   precision highp float;
   precision highp int;
@@ -101,11 +100,10 @@ function getFragmentShader() {
   uniform float pointSize;
   uniform float opacity;
 
-  flat in vec4 lineStart;
-  flat in vec4 lineEnd;
-
-  flat in vec2 lineStartScreen;
-  flat in vec2 lineEndScreen;
+  ${options.flat}in vec4 lineStart;
+  ${options.flat}in vec4 lineEnd;
+  ${options.flat}in vec2 lineStartScreen;
+  ${options.flat}in vec2 lineEndScreen;
 
   in vec2 textureCoord;
   in vec2 textureCoordScreen;

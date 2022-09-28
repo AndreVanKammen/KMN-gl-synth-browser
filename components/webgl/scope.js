@@ -1,12 +1,12 @@
 import { BaseBinding } from "../../../KMN-varstack.js/vars/base.js";
 import { FloatVar } from "../../../KMN-varstack.js/vars/float.js";
-import { ComponentInfo, getElementHash, RectInfo, RenderControl, baseComponentShaderHeader, baseComponentShaderFooter } from "../../../KMN-varstack-browser/components/webgl/render-control.js";
+import { ComponentInfo, getElementHash, RectInfo, RenderControl, getBaseComponentShaderHeader, baseComponentShaderFooter } from "../../../KMN-varstack-browser/components/webgl/render-control.js";
 import { StringVar } from "../../../KMN-varstack.js/vars/string.js";
 import { SynthMixer } from "../../../KMN-gl-synth.js/webgl-synth-data.js";
 import WebGLSynth from "../../../KMN-gl-synth.js/webgl-synth.js";
 import { ComponentShaders } from "../../../KMN-varstack-browser/components/webgl/component-shaders.js";
 
-export const scopeShaderHeader = baseComponentShaderHeader + /*glsl*/`
+export const getScopeShaderHeader = (options) => getBaseComponentShaderHeader(options) + /*glsl*/`
 #define volumeScale 1.0
 precision highp sampler2DArray;
 
@@ -84,7 +84,7 @@ mat2x4 getEnergy() {
 }
 `;
 
-const scopeShaderHeaderOutput = baseComponentShaderHeader + /*glsl*/`
+const getScopeShaderHeaderOutput = (options) => getBaseComponentShaderHeader(options) + /*glsl*/`
 #define volumeScale 1.0
 
 precision highp sampler2DArray;
@@ -137,8 +137,8 @@ export class MixerScope {
   handleGetShader() {
     return this.synth.getDefaultDefines() +
       (this.isOutput
-        ? scopeShaderHeaderOutput
-        : scopeShaderHeader) + ComponentShaders[this.scopeShader] + baseComponentShaderFooter;
+        ? getScopeShaderHeaderOutput(this._controller.shaderOptions)
+        : getScopeShaderHeader(this._controller.shaderOptions)) + ComponentShaders[this.scopeShader] + baseComponentShaderFooter;
   }
 
   /** @param {ComponentInfo} info */
@@ -260,8 +260,8 @@ export class Scope extends BaseBinding {
   handleGetShader() {
     return this.synthController.webGLSynth.getDefaultDefines() +
          (this.isOutput
-         ? scopeShaderHeaderOutput
-         : scopeShaderHeader) + ComponentShaders['scope'] + baseComponentShaderFooter;
+         ? getScopeShaderHeaderOutput(this._controller.shaderOptions)
+         : getScopeShaderHeader(this._controller.shaderOptions)) + ComponentShaders['scope'] + baseComponentShaderFooter;
   }
 
   /** @param {ComponentInfo} info */

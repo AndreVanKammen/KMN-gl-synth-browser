@@ -2,7 +2,7 @@ import { SynthMixer } from "../../../KMN-gl-synth.js/webgl-synth-data.js";
 import WebGLSynth from "../../../KMN-gl-synth.js/webgl-synth.js";
 import { baseComponentShaderFooter, ComponentInfo, getElementHash, RenderControl, RectInfo } from "../../../KMN-varstack-browser/components/webgl/render-control.js";
 import { getLogFloatLoudnessMap, getFrequencyForNote, getVolumeForFrequency, getLinearFloatLoudnessMap } from "../../../KMN-gl-synth.js/frequency-utils.js";
-import { scopeShaderHeader } from "./scope.js";
+import { getScopeShaderHeader } from "./scope.js";
 
 // "spectrumAnalyzer_analyzer":/*glsl*/`
 // const float log10 = 1.0 / log(10.0);
@@ -110,7 +110,7 @@ import { scopeShaderHeader } from "./scope.js";
 //   return vec4(pow(returnClr,vec3(1.0/2.1)), alpha);
 // }`,
 // "spectrumAnalyzer":/*glsl*/`
-const spectrumAnalyzerShader = scopeShaderHeader + /*glsl*/`
+const spectrumAnalyzerShader = getScopeShaderHeader + /*glsl*/`
 
 uniform sampler2D loudnessTexture;\n
 uniform float opacity;\n
@@ -138,8 +138,8 @@ vec4 renderComponent(vec2 center, vec2 size) {
 // TODO: Change to make use of MixerScope(Base)
 export class SpectrumAnalyzer {
   _controller = RenderControl.geInstance();
-  
-  /** 
+
+  /**
    * @param {HTMLElement} element
    */
   constructor(element) {
@@ -197,8 +197,8 @@ export class SpectrumAnalyzer {
   }
 
   /**
-   * @param {import("../../../KMN-utils.js/webglutils.js").RenderingContextWithUtils} gl 
-   * @param {import("../../../KMN-utils.js/webglutils.js").WebGLProgramExt} shader 
+   * @param {import("../../../KMN-utils.js/webglutils.js").RenderingContextWithUtils} gl
+   * @param {import("../../../KMN-utils.js/webglutils.js").WebGLProgramExt} shader
    */
   handleShaderInit = (gl,shader) => {
     const webGLSynth = this.synth;
@@ -236,12 +236,12 @@ export class SpectrumAnalyzer {
       info.rect.height = box.height;
       info.rect.x      = box.x;
       info.rect.y      = box.y;
-  
+
       info.size.centerX = box.width / 2;
       info.size.centerY = box.height / 2;
       info.size.width   = box.width;
       info.size.height  = box.height
-  
+
       const tli = instrumentMixer.buffers[this.bufferNr];
       info.value[0] = tli.passNr % 2;
       info.value[1] = tli.current;

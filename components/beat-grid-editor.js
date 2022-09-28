@@ -1,6 +1,6 @@
 import { TimeLineBase } from "./time-line-base.js";
 
-function getVertexShader() {
+function getVertexShader(options) {
   return /*glsl*/`
     in float vertexPosition;
 
@@ -15,9 +15,8 @@ function getVertexShader() {
     uniform int beatsPerBar;
     uniform float timePerBeat;
 
-    flat out vec4 lineInfo;
-
-    flat out float lineXScreen;
+    ${options.flat}out vec4 lineInfo;
+    ${options.flat}out float lineXScreen;
 
     out vec2 textureCoord;
     out vec2 textureCoordScreen;
@@ -81,7 +80,7 @@ function getVertexShader() {
 
 // TODO: Move Automixer specific stuff to mix-beat-grid-editor
 // The shader that calculates the pixel values for the filled triangles
-function getFragmentShader() {
+function getFragmentShader(options) {
   return /*glsl*/`precision highp float;
   precision highp float;
   precision highp int;
@@ -99,9 +98,8 @@ function getFragmentShader() {
   uniform float timePerBeat;
   uniform float duration;
 
-  flat in vec4 lineInfo;
-
-  flat in float lineXScreen;
+  ${options.flat}in vec4 lineInfo;
+  ${options.flat}in float lineXScreen;
 
   in vec2 textureCoord;
   in vec2 textureCoordScreen;

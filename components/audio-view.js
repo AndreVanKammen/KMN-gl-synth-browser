@@ -8,8 +8,8 @@ function getVertexShader(options) {
   return /*glsl*/`
     in vec2 vertexPosition;
     out vec2 textureCoord;
-    flat out float fragmentsPerPixel;
-    flat out float beatOpacity;
+    ${options.flat}out float fragmentsPerPixel;
+    ${options.flat}out float beatOpacity;
 
     uniform float durationInFragments;
     uniform vec2 scale;
@@ -40,8 +40,8 @@ function getFragmentShader(options) {
   const float pi = 3.141592653589793;
 
   in vec2 textureCoord;
-  flat in float fragmentsPerPixel;
-  flat in float beatOpacity;
+  ${options.flat}in float fragmentsPerPixel;
+  ${options.flat}in float beatOpacity;
   out vec4 fragColor;
 
   uniform vec2 scale;

@@ -1,11 +1,10 @@
-import { ComponentInfo, getElementHash, RectInfo, RenderControl, baseComponentShaderHeader, baseComponentShaderFooter } from "../../../KMN-varstack-browser/components/webgl/render-control.js";
+import { ComponentInfo, getElementHash, RectInfo, RenderControl, getBaseComponentShaderHeader, baseComponentShaderFooter } from "../../../KMN-varstack-browser/components/webgl/render-control.js";
 import { PointerTracker } from "../../../KMN-utils-browser/pointer-tracker.js";
 import { getKeyNr } from "./music-keyboard-sdr.js";
 import { MusicInterface, NoteInterface } from "../../interfaces/music-interface.js";
 import { ComponentShaders } from "../../../KMN-varstack-browser/components/webgl/component-shaders.js";
 
-const musicKeyboardShader = baseComponentShaderHeader + /*glsl*/`
-
+const getMusicKeyboardShader = (options) => getBaseComponentShaderHeader(options) + /*glsl*/`
 uniform sampler2D pointDataTexture;
 
 vec4 getNoteData(int noteNr) {
@@ -97,7 +96,7 @@ vec4 renderComponent(vec2 center, vec2 size) {
 
 export class MusicKeyboard {
   _controller = RenderControl.geInstance();
-  
+
   /**
    * @param {HTMLElement} element
    */
@@ -112,7 +111,7 @@ export class MusicKeyboard {
     this._keyboardInfo = this._componentInfo.getFreeIndex(this.updateKeyboardInfo.bind(this))
 
     this._pointerTracker = new PointerTracker(this._element);
-    
+
     /** @type {MusicInterface} */
     this.music = null;
     this.lastNoteNr = -1;
@@ -120,7 +119,7 @@ export class MusicKeyboard {
     /** @type {Array<NoteInterface>} */
     this.notes = [];
 
-    this.noteData = new Float32Array(4096);    
+    this.noteData = new Float32Array(4096);
     this.noteTexture = null;
   }
 
@@ -134,12 +133,12 @@ export class MusicKeyboard {
   }
 
   handleGetShader() {
-    return musicKeyboardShader;
+    return getMusicKeyboardShader(this._controller.shaderOptions);
   }
 
   /**
-   * @param {import("../../../KMN-utils.js/webglutils.js").RenderingContextWithUtils} gl 
-   * @param {import("../../../KMN-utils.js/webglutils.js").WebGLProgramExt} shader 
+   * @param {import("../../../KMN-utils.js/webglutils.js").RenderingContextWithUtils} gl
+   * @param {import("../../../KMN-utils.js/webglutils.js").WebGLProgramExt} shader
    */
   handleShaderInit = (gl, shader) => {
     gl.activeTexture(gl.TEXTURE9);
