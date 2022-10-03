@@ -1,5 +1,6 @@
 import SynthController from "../KMN-gl-synth.js/synth-controller.js";
 import { SynthMixer } from "../KMN-gl-synth.js/webgl-synth-data.js";
+import defer from "../KMN-utils.js/defer.js";
 import { addCSS, kmnClassName } from "../KMN-varstack-browser/utils/html-utils.js";
 
 const cssStr = /*css*/`
@@ -62,39 +63,81 @@ export class WebGLTest {
     this.output.innerHTML += s + '\n';
   }
 
-  testSynth() {
-    this.logToOutput('Test synth')
-    this.synthController.ensureStarted();
+  _testEmptySynth()    {
     let start = performance.now();
     this.synthController.webGLSynth.calculateSamples();
     let buffer = this.synthController.webGLSynth.getCalculatedSamples();
-    for (let ix = 1; ix < 100; ix++) {
+    for (let ix = 1; ix < 200; ix++) {
       this.synthController.webGLSynth.calculateSamples();
       this.synthController.webGLSynth.getCalculatedSamples();
     }
     let stop = performance.now();
-    this.logToOutput('\nEmpty test 100 loops: ' + (stop - start).toFixed(2) + 'ms');
+    let duration = buffer.length / 2 * 200 / this.synthController.webGLSynth.sampleRate;
+    let perf = stop - start;
+    this.logToOutput(`\Empty test ${duration.toFixed(2)} seconds: ${perf.toFixed(2)}ms speed ${(duration/perf*1000).toFixed(2)}*`);
     this.logBuffer(buffer)
+  }
 
+  _testSingleNote() {
     this.testMixer = new SynthMixer(this.synthController.playData.output);
     this.noteMixer = new SynthMixer(this.testMixer, 'sine');
 
     const noteData = { note: 84, velocity: 1.0, channel: 1 }
     const noteEntry = this.synthController.playData.addNote(this.synthController.webGLSynth.synthTime, 'none', 1, this.noteMixer, noteData);
-    const noteData2 = { note: 64, velocity: 1.0, channel: 1 }
-    const noteEntry2 = this.synthController.playData.addNote(this.synthController.webGLSynth.synthTime, 'none', 1, this.noteMixer, noteData2);
-    start = performance.now();
+    let start = performance.now();
     this.synthController.webGLSynth.calculateSamples();
-    buffer = this.synthController.webGLSynth.getCalculatedSamples();
-    for (let ix = 1; ix < 100; ix++) {
+    let buffer = this.synthController.webGLSynth.getCalculatedSamples();
+    for (let ix = 1; ix < 200; ix++) {
       this.synthController.webGLSynth.calculateSamples();
       this.synthController.webGLSynth.getCalculatedSamples();
     }
-    stop = performance.now();
+    let stop = performance.now();
     noteEntry.release();
-    noteEntry2.release();
-    this.logToOutput('\nNote test 100 loops: ' + (stop - start).toFixed(2) + 'ms '+this.synthController.webGLSynth.outputTexture.buffers[0]);
+    let duration = buffer.length / 2 * 200 / this.synthController.webGLSynth.sampleRate;
+    let perf = stop - start;
+    this.logToOutput(`\nNote test ${duration.toFixed(2)} seconds: ${perf.toFixed(2)}ms speed ${(duration/perf*1000).toFixed(2)}*`);
     this.logBuffer(buffer)
+  }
+
+  _test100Note() {
+    this.testMixer = new SynthMixer(this.synthController.playData.output);
+    this.noteMixer = new SynthMixer(this.testMixer, 'sine');
+
+    let noteEntries = [];
+    for (let ix = 0; ix < 100; ix++) {
+      const noteData = { note: 16 + ix, velocity: 1.0, channel: 1 };
+      noteEntries.push(this.synthController.playData.addNote(this.synthController.webGLSynth.synthTime, 'none', 1, this.noteMixer, noteData));
+    }
+    let start = performance.now();
+    this.synthController.webGLSynth.calculateSamples();
+    let buffer = this.synthController.webGLSynth.getCalculatedSamples();
+    for (let ix = 1; ix < 200; ix++) {
+      this.synthController.webGLSynth.calculateSamples();
+      this.synthController.webGLSynth.getCalculatedSamples();
+    }
+    let stop = performance.now();
+    for (let ix = 0; ix < 100; ix++) {
+      noteEntries[ix].release();
+    }
+    let duration = buffer.length / 2 * 200 / this.synthController.webGLSynth.sampleRate;
+    let perf = stop - start;
+    this.logToOutput(`\nNote test ${duration.toFixed(2)} seconds: ${perf.toFixed(2)}ms speed ${(duration/perf*1000).toFixed(2)}*`);
+    this.logBuffer(buffer)
+  }
+
+  testSynth() {
+    this.logToOutput('Test synth')
+    this.synthController.ensureStarted();
+    const tests = [this._testEmptySynth, this._testSingleNote];
+    let currentTestIx = 0;
+    const doTest = () => {
+      let test = tests[currentTestIx++];
+      test.apply(this);
+      if (currentTestIx < tests.length) {
+        defer(doTest);
+      }
+    }
+    defer(doTest);
   }
 
   logBuffer(buffer) {
