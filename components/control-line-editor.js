@@ -53,7 +53,7 @@ function getVertexShader(options) {
       pointIx++;
       lineEnd = texelFetch(pointDataTexture, ivec2(pointIx % 1024, pointIx / 1024), 0);
 
-      vec2 pixelSize = vec2(2.0) / scale / windowSize * (pointSize + 1.0) * dpr;
+      vec2 pixelSize = vec2(2.0) / scale / windowSize * (pointSize + 2.0) * dpr;
 
       int subPointIx = gl_VertexID % 6;
       vec2 pos;
@@ -113,7 +113,9 @@ function getFragmentShader(options) {
   {
     vec2 pa = p - a;
     vec2 ba = b - a;
-    float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+    float l = length(ba);
+    float h = clamp(dot(pa, ba) / dot(ba, ba), -2.0/l, 1.0+ 2.0 / l);
+    // float h = dot(pa, ba) / dot(ba, ba);
     return length(pa - ba * h);
   }
 
@@ -122,6 +124,12 @@ function getFragmentShader(options) {
   void main(void) {
     vec4 color = vec4(0.0);
     float lineDist = line(textureCoordScreen.xy, lineStartScreen.xy, lineEndScreen.xy);
+    if (lineStartScreen.x == lineEndScreen.x && abs(lineStartScreen.y - lineEndScreen.y) < 1.0) {
+      fragColor = vec4(0.0);
+      return;
+    }
+    // fragColor = pow(vec4(1.0 - smoothstep(0.25,3.5,lineDist)),vec4(1.0/2.2));
+    // return;
     float pointDist =
             // min(distance(textureCoordScreen.xy, lineEndScreen.xy  ),
                 distance(textureCoordScreen.xy, lineStartScreen.xy);
@@ -136,6 +144,7 @@ function getFragmentShader(options) {
 
     float hasPointBorder = 1.0 - smoothstep(pointBorderWidth, pointBorderWidth + 1.25, abs(pointDist - pointWidth));
     float hasPoint = 1.0 - smoothstep(pointWidth, pointWidth + 1.5, pointDist);
+    hasPointBorder *= hasPoint;
 
     if (lineStart.w > 0.0) {
       lineWidth = 0.9;
@@ -156,11 +165,9 @@ function getFragmentShader(options) {
       }
     }
 
-
-    float hasLine = 1.0 - pow(smoothstep(lineWidth-1.0,lineWidth+1.0,lineDist),1.4);
+    float hasLine = 1.0 - pow(smoothstep(lineWidth-1.0,lineWidth+1.6*dpr,lineDist),1.4);
 
     hasLine = max(hasLine - hasPoint, 0.0);
-    hasPoint = max(hasPoint - hasPointBorder, 0.0);
 
     color.rgb = clamp(hasPoint       * lineColor * 0.5 + //pointColor +
                       hasPointBorder * lineColor * 1.5 +
