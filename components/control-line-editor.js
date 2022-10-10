@@ -114,7 +114,7 @@ function getFragmentShader(options) {
     vec2 pa = p - a;
     vec2 ba = b - a;
     float l = length(ba);
-    float h = clamp(dot(pa, ba) / dot(ba, ba), -2.0/l, 1.0+ 2.0 / l);
+    float h = clamp(dot(pa, ba) / dot(ba, ba), -2.0 / l, 1.0 + 2.0 / l);
     // float h = dot(pa, ba) / dot(ba, ba);
     return length(pa - ba * h);
   }
