@@ -165,7 +165,7 @@ function getFragmentShader(options) {
       }
     }
 
-    float hasLine = 1.0 - pow(smoothstep(lineWidth-1.0,lineWidth+1.6*dpr,lineDist),1.4);
+    float hasLine = 1.0 - pow(smoothstep(lineWidth-0.5,lineWidth+1.0*dpr,lineDist),1.7);
 
     hasLine = max(hasLine - hasPoint, 0.0);
 
@@ -173,7 +173,7 @@ function getFragmentShader(options) {
                       hasPointBorder * lineColor * 1.5 +
                       hasLine        * lineColor, 0.0, 1.0);
 
-    color.a = pow(max(max(hasPoint, hasLine), hasPointBorder),0.5);
+    color.a = max(max(hasPoint, hasLine), hasPointBorder);
     // if (color.a > 0.001) {
     //   color.rgb = min(color.rgb / (color.a + 0.01), 1.0);
     // }
