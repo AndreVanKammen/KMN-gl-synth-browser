@@ -208,7 +208,7 @@ export class MixerScope {
       info.size.height  = box.height
 
       if (this.isOutput){
-        info.value[2] = webGLSynth.maxLevel;
+        info.value[2] = webGLSynth.maxLevel * (webGLSynth.automaticVolume ? webGLSynth.correctiveVolume : 1.0);
       } else {
         const tli = instrumentMixer.buffers[instrumentMixer.buffers.length-1]
         // if (this._controller.drawCount% 16 == 0) {
