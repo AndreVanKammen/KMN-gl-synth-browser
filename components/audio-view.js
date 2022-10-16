@@ -200,7 +200,8 @@ export class AudioView extends ControlHandlerBase {
     this._rekordBoxColors = x;
     if (this._rekordBoxColors) {
       this.maxColor = [0, 88.0 / 255.0, 235.0 / 255.0, 1.0];
-      this.rmsColor = [214.0 / 255.0, 90.0 / 255.0, 0.0 / 255.0, 1.0];
+      // this.rmsColor = [214.0 / 255.0, 90.0 / 255.0, 0.0 / 255.0, 1.0];
+      this.rmsColor = [23.0 / 255.0, 220.0 / 255.0, 73.0 / 255.0, 1.0];
       this.engColor = [253.0 / 255.0, 234.0 / 255.0, 212.0 / 255.0, 1.0];
     } else {
       this.maxColor = [1, 0, 0, 0.8];
