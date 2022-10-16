@@ -141,8 +141,11 @@ function getFragmentShader(options) {
     vec3 d = 1.0 - dist;
 
     vec4 clr = d.r * maxColor;
-    clr = mix(clr, rmsColor, rmsColor.a * d.g);
-    clr = mix(clr, engColor, engColor.a * d.b);
+    clr = mix(clr, rmsColor, rmsColor.a * d.g * 0.8);
+    clr = mix(clr, engColor, engColor.a * d.b * 0.8);
+    // clr += mix(clr, rmsColor, rmsColor.a * d.g);
+    // clr += mix(clr, engColor, engColor.a * d.b);
+    clr = clamp(clr,0.0,1.0);
     // float a = max(max(clr.r,clr.g),clr.b) * opacity;
     fragColor = vec4(clamp(clr.rgb, 0.0,1.0) * (0.5 + 0.5*step(playPos,textureCoord.x)),clr.a * opacity);
     if (textureCoord.y<0.0) {
