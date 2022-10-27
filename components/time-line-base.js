@@ -173,6 +173,9 @@ export class TimeLineBase extends ControlHandlerBase {
     this.selectedPointIx = selectedIx;
   }
 
+  updateShader(shader) {
+  }
+
   updateCanvas() {
     if (!this.isVisible) {
       return
@@ -191,6 +194,7 @@ export class TimeLineBase extends ControlHandlerBase {
           gl.activeTexture(gl.TEXTURE0);
         }
 
+        this.updateShader(shader);
         // TODO: standardize this for shaders
         shader.u.time?.set((performance.now() - this.perfStart) / 1000.0);
         shader.u.isSelected?.set(this.isSelected);
