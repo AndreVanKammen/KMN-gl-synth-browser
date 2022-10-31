@@ -97,7 +97,25 @@ export class WavLineView extends ControlHandlerBase {
     this.durationTreshhold = 3.0;
     this.onGetAudioTrack = (sender) => this.track;
     this.rc = RenderControl.geInstance();
+    this.opacity = 1.0;
+    this.opacitySmooth = 0.0;
   }
+
+  get isVisible() {
+    return super.isVisible || this.opacitySmooth > 0.003;
+  }
+
+  set isVisible(b) {
+    if (super.isVisible !== b) {
+      super.isVisible = b;
+      if (b) {
+        this.opacity = 1.0;
+      } else {
+        this.opacity = 0.0;
+      }
+    }
+  }
+
 
   /**
    * @param {HTMLElement} parentElement
@@ -189,9 +207,9 @@ export class WavLineView extends ControlHandlerBase {
       this.pointsLength = sampleCount;
       for (let ix = startSample; ix < startSample + this.pointsLength; ix++) {
         data[ofs++] = 0.5 * (wavLeft[ix] + wavRight[ix]);
-        data[ofs++] = 1.0; // R
-        data[ofs++] = 1.0; // G
-        data[ofs++] = 1.0; // B
+        data[ofs++] = 0.0; // R
+        data[ofs++] = 0.0; // G
+        data[ofs++] = 0.0; // B
         // ofs += 4;
       }
     }
@@ -229,7 +247,8 @@ export class WavLineView extends ControlHandlerBase {
           shader.u.timeStep?.set(this.timeStep / this.duration * 2.0);
           // shader.u.lineAlpha?.set(1.0 - Math.max(0.0,
           //  Math.pow(durationOnScreen / this.parentElement.clientWidth * 10000.0, 1.0)));
-          shader.u.lineAlpha?.set(1.0 / Math.pow(durationOnScreen / this.parentElement.clientWidth * 40000.0, 0.3));
+          this.opacitySmooth = this.opacitySmooth * 0.95 + 0.05 * this.opacity;
+          shader.u.lineAlpha?.set(0.8 * Math.pow(this.opacitySmooth,2.2));
       // console.log(1.0 - Math.max(0.0,Math.pow(durationOnScreen / this.parentElement.clientWidth * 1000.0, 1.0)))
           if (this.vertexIDDisabled) {
             shader.a.vertexPosition.en();
