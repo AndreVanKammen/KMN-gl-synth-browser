@@ -105,10 +105,10 @@ function getFragmentShader(options) {
   in vec2 textureCoordScreen;
   out vec4 fragColor;
 
-  const vec4 beatColor = vec4(0.75, 0.75, 0.25, 0.85);
-  const vec4 barColor  = vec4(0.80, 0.80, 0.27, 0.90);
-  const vec4 bar4Color = vec4(0.90, 0.90, 0.30, 0.95);
-  const vec4 bar8Color = vec4(1.0, 1.0, 0.33, 1.0);
+  const vec4 beatColor = vec4(1.0, 1.0, 0.2, 1.0);
+  const vec4 barColor  = vec4(1.0, 1.0, 0.5, 1.0);
+  const vec4 bar4Color = vec4(1.0, 1.0, 0.6, 1.0);
+  const vec4 bar8Color = vec4(1.0, 1.0, 1.0, 1.0);
 
   void main(void) {
     vec4 color = vec4(0.0);
@@ -157,6 +157,7 @@ function getFragmentShader(options) {
                   // * pow(durationOnScreen, 0.1) / 3.0;
 
     float hasLine = 1.0 - smoothstep(lineWidth - 0.15*dpr, lineWidth + 1.5*dpr, lineDist);
+
 
     color = hasLine * lineColor;
     fragColor = color; //vec4(pow(color.rgb,vec3(1.0/2.2)),color.a);

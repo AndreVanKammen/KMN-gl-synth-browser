@@ -75,7 +75,7 @@ function getFragmentShader() {
   const vec3 pointBorderColor = vec3(0.8);
 
   void main(void) {
-    fragColor = vec4(color.rgb,lineAlpha);
+    fragColor = vec4(color,lineAlpha);
   }
   `
 }
@@ -205,12 +205,17 @@ export class WavLineView extends ControlHandlerBase {
     if (sampleCount !== 0) {
       let ofs = 0;
       this.pointsLength = sampleCount;
+      // let lastV = 0;
+      // let dy = 0;
       for (let ix = startSample; ix < startSample + this.pointsLength; ix++) {
-        data[ofs++] = 0.5 * (wavLeft[ix] + wavRight[ix]);
+        let v = 0.5 * (wavLeft[ix] + wavRight[ix]);
+        data[ofs++] = v;
+        // dy = Math.max(Math.min(1.0, Math.abs(lastV - v) * 3.0 + dy * 0.5), dy * 0.95);
         data[ofs++] = 0.0; // R
-        data[ofs++] = 0.0; // G
-        data[ofs++] = 0.0; // B
+        data[ofs++] = 0.0; // dy; // G
+        data[ofs++] = 0.0; // dy; // B
         // ofs += 4;
+        // lastV = v;
       }
     }
     this.pointInfo = this.gl.createOrUpdateFloat32TextureBuffer(data, this.pointInfo);//, 0, this.pointsLength * 4);
@@ -247,7 +252,7 @@ export class WavLineView extends ControlHandlerBase {
           shader.u.timeStep?.set(this.timeStep / this.duration * 2.0);
           // shader.u.lineAlpha?.set(1.0 - Math.max(0.0,
           //  Math.pow(durationOnScreen / this.parentElement.clientWidth * 10000.0, 1.0)));
-          this.opacitySmooth = this.opacitySmooth * 0.95 + 0.05 * this.opacity;
+          this.opacitySmooth = this.opacitySmooth * 0.7 + 0.3 * this.opacity;
           shader.u.lineAlpha?.set(0.8 * Math.pow(this.opacitySmooth,2.2));
       // console.log(1.0 - Math.max(0.0,Math.pow(durationOnScreen / this.parentElement.clientWidth * 1000.0, 1.0)))
           if (this.vertexIDDisabled) {
