@@ -211,9 +211,9 @@ export class WavLineView extends ControlHandlerBase {
         let v = 0.5 * (wavLeft[ix] + wavRight[ix]);
         data[ofs++] = v;
         // dy = Math.max(Math.min(1.0, Math.abs(lastV - v) * 3.0 + dy * 0.5), dy * 0.95);
-        data[ofs++] = 0.0; // R
-        data[ofs++] = 0.0; // dy; // G
-        data[ofs++] = 0.0; // dy; // B
+        data[ofs++] = 1.0; // R
+        data[ofs++] = 1.0; // dy; // G
+        data[ofs++] = 1.0; // dy; // B
         // ofs += 4;
         // lastV = v;
       }
