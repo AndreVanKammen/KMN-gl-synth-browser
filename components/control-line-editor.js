@@ -474,6 +474,7 @@ export class ControlLineData extends ControlHandlerBase {
       this.pointsChanged = true;
       const ofs = ix * vertexSize + this.vertex1stPointOffset;
       this.pointData[ofs + 1] = vertexValue;
+      this.pointsInvalidated = true;
     }
   }
 
@@ -484,6 +485,7 @@ export class ControlLineData extends ControlHandlerBase {
       this.pointsChanged = true;
       const ofs = ix * vertexSize + this.vertex1stPointOffset;
       this.pointData[ofs] = ((time + this.timeOffset) / this.owner.duration) * 2.0 - 1.0;
+      this.pointsInvalidated = true;
     }
   }
 
