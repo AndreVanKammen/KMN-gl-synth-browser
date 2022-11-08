@@ -2,6 +2,7 @@ import PanZoomControl, { ControlHandlerBase, PanZoomBase, PanZoomParent } from "
 import defer from "../../KMN-utils.js/defer.js";
 import getWebGLContext, { RenderingContextWithUtils } from "../../KMN-utils.js/webglutils.js";
 import { RenderControl } from "../../KMN-varstack-browser/components/webgl/render-control.js";
+import { BaseVar } from "../../KMN-varstack.js/vars/base.js";
 // 0 1
 // 2
 // 2 1 3 4
@@ -219,6 +220,7 @@ export class ControlLineData extends ControlHandlerBase {
     this.extraVertexPoints = 1;
     this.selectedLineIx = -1;
     this.selectedPointIx = -1;
+    this.labelVar = null;
 
     this.pointsInvalidated = false;
     this.pointDataInvalidated = false;
@@ -680,7 +682,8 @@ export class ControlLineEditor extends ControlHandlerBase {
   }
 
   get selectedControl() {
-    return this.isSelected ? this._selectedControl : null;
+    // return this.isSelected ? this._selectedControl : null;
+    return this._selectedControl;
   }
 
   /**
@@ -757,9 +760,10 @@ export class ControlLineEditor extends ControlHandlerBase {
  * @param {number} minValue
  * @param {number} defaultValue
  * @param {number} timeOffset
+ * @param {BaseVar} labelVar
  * @returns {ControlLineData}
  */
-  setPoints(dataName, colorIx, points, duration, minValue = 10000000.0, maxValue = -10000000.0, defaultValue = 1.0, timeOffset = 0.0) {
+  setPoints(dataName, colorIx, points, duration, minValue = 10000000.0, maxValue = -10000000.0, defaultValue = 1.0, timeOffset = 0.0, labelVar = null) {
     this.duration = duration;
     /** @type {ControlLineData} */
     let data = this.controlData[dataName];
@@ -767,6 +771,7 @@ export class ControlLineEditor extends ControlHandlerBase {
       data = new ControlLineData(this, this.gl, this.control, dataName, colorIx);
       data.isVisible = this._isVisible;
       data.isEnabled = this._isEnabled;
+      data.labelVar = labelVar;
       this.control.addHandler(data);
       this.controlData[dataName] = data;
     }
