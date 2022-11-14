@@ -110,7 +110,7 @@ import { getScopeShaderHeader } from "./scope.js";
 //   return vec4(pow(returnClr,vec3(1.0/2.1)), alpha);
 // }`,
 // "spectrumAnalyzer":/*glsl*/`
-const spectrumAnalyzerShader = getScopeShaderHeader + /*glsl*/`
+const spectrumAnalyzerShader = /*glsl*/`
 
 uniform sampler2D loudnessTexture;\n
 uniform float opacity;\n
@@ -181,7 +181,7 @@ export class SpectrumAnalyzer {
   }
 
   handleGetShader() {
-    return this.synth.getDefaultDefines() + spectrumAnalyzerShader;
+    return this.synth.getDefaultDefines() + getScopeShaderHeader(this._controller.shaderOptions) + spectrumAnalyzerShader;
   }
 
   /** @param {ComponentInfo} info */
