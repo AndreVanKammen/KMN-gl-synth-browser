@@ -129,7 +129,6 @@ function getFragmentShader(options) {
 
     float readOffset = float(offset) + delta;
 
-    float fragmentsPerPixel = durationInFragments / (scale.x * float(windowSize.x));
     vec3 data1 = mixDataIX(readOffset);
     vec2 px = vec2(1.0) / vec2(windowSize) / scale;
 
