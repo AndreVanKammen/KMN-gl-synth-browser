@@ -75,6 +75,7 @@ function getFragmentShader() {
   const vec3 pointBorderColor = vec3(0.8);
 
   void main(void) {
+    fragColor = vec4(color,pow(lineAlpha,1.0/2.2));
     fragColor = vec4(color,lineAlpha);
   }
   `
