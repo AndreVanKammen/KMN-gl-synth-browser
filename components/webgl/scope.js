@@ -135,7 +135,7 @@ export class MixerScope {
   }
 
   handleGetShader() {
-    return this.synth.getDefaultDefines() +
+    return this.synth.shaders.getDefaultDefines() +
       (this.isOutput
         ? getScopeShaderHeaderOutput(this._controller.shaderOptions)
         : getScopeShaderHeader(this._controller.shaderOptions)) + ComponentShaders[this.scopeShader] + baseComponentShaderFooter;
@@ -258,7 +258,7 @@ export class Scope extends BaseBinding {
   }
 
   handleGetShader() {
-    return this.synthController.webGLSynth.getDefaultDefines() +
+    return this.synthController.webGLSynth.shaders.getDefaultDefines() +
          (this.isOutput
          ? getScopeShaderHeaderOutput(this._controller.shaderOptions)
          : getScopeShaderHeader(this._controller.shaderOptions)) + ComponentShaders['scope'] + baseComponentShaderFooter;

@@ -181,7 +181,7 @@ export class SpectrumAnalyzer {
   }
 
   handleGetShader() {
-    return this.synth.getDefaultDefines() + getScopeShaderHeader(this._controller.shaderOptions) + spectrumAnalyzerShader;
+    return this.synth.shaders.getDefaultDefines() + getScopeShaderHeader(this._controller.shaderOptions) + spectrumAnalyzerShader;
   }
 
   /** @param {ComponentInfo} info */

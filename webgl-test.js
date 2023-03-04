@@ -79,8 +79,8 @@ export class WebGLTest {
   }
 
   _testSingleNote() {
-    let testMixer = new SynthMixer(this.synthController.playData.output);
-    let noteMixer = new SynthMixer(testMixer, 'sine');
+    let testMixer = new SynthMixer(this.synthController.playData, this.synthController.playData.output);
+    let noteMixer = new SynthMixer(this.synthController.playData, testMixer, 'sine');
 
     const noteData = { note: 84, velocity: 1.0, channel: 1 }
     const noteEntry = this.synthController.playData.addNote(this.synthController.webGLSynth.synthTime, 'none', 1, noteMixer, noteData);
@@ -107,8 +107,8 @@ export class WebGLTest {
   }
 
   _test100Note() {
-    let testMixer = new SynthMixer(this.synthController.playData.output);
-    let noteMixer = new SynthMixer(testMixer, 'sine');
+    let testMixer = new SynthMixer(this.synthController.playData, this.synthController.playData.output);
+    let noteMixer = new SynthMixer(this.synthController.playData, testMixer, 'sine');
 
     let noteEntries = [];
     for (let ix = 0; ix < 100; ix++) {
@@ -140,10 +140,10 @@ export class WebGLTest {
   }
 
   _test100NoteDFT() {
-    let testMixer = new SynthMixer(this.synthController.playData.output);
+    let testMixer = new SynthMixer(this.synthController.playData, this.synthController.playData.output);
     testMixer.addEffect('DFT');
     testMixer.addEffect('iDFT');
-    let noteMixer = new SynthMixer(testMixer, 'sine');
+    let noteMixer = new SynthMixer(this.synthController.playData, testMixer, 'sine');
 
     let noteEntries = [];
     for (let ix = 0; ix < 100; ix++) {
@@ -175,13 +175,13 @@ export class WebGLTest {
   }
 
   _test100Note10Effects() {
-    let testMixer = new SynthMixer(this.synthController.playData.output);
+    let testMixer = new SynthMixer(this.synthController.playData, this.synthController.playData.output);
     testMixer.addEffect('none');
     testMixer.addEffect('ms delay');
     testMixer.addEffect('lowpass');
     testMixer.addEffect('none');
     testMixer.addEffect('lowpass');
-    let noteMixer = new SynthMixer(testMixer, 'sine');
+    let noteMixer = new SynthMixer(this.synthController.playData, testMixer, 'sine');
     noteMixer.addEffect('none');
     noteMixer.addEffect('ms delay');
     noteMixer.addEffect('lowpass');
@@ -219,14 +219,6 @@ export class WebGLTest {
 
   logBuffer(buffer) {
     return;
-    let resultStr = '';
-    for (let ix = 0; ix < 256; ix++) {
-      if (ix % 16 === 0) {
-        resultStr += '\n';
-      }
-      resultStr += (buffer[ix * 2] + 1).toFixed(2) + ' ';
-    }
-    this.logToOutput(resultStr);
   }
 
   testSynth() {
